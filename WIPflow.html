@@ -525,6 +525,30 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 .deadline-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .deadline-date { font-family: var(--mono); font-size: 11px; color: var(--text-3); flex-shrink: 0; }
 
+/* Resource conflict list */
+.conflict-person {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--orange);
+  padding: 8px 0 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.conflict-person:first-child { padding-top: 0; }
+.conflict-pair {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.conflict-pair:hover { background: var(--bg-3); }
+.conflict-pair:last-child { border-bottom: none; }
+.conflict-tasks { flex: 1; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conflict-meta  { flex-shrink: 0; font-family: var(--mono); font-size: 11px; color: var(--orange); }
+
 /* ================================================================
    TABLE VIEW
    ================================================================ */
@@ -1178,6 +1202,17 @@ tr.overdue td.td-name { color: var(--red); }
           </div>
         </div>
 
+        <!-- Resource conflicts — hidden when none -->
+        <div class="card" id="card-conflicts" style="display:none">
+          <div class="card-header">
+            <span class="card-title" style="color:var(--orange)">⚠ Resource Conflicts</span>
+            <span class="text-sm text-muted text-mono">allocation &gt; 100% on overlapping tasks</span>
+          </div>
+          <div class="card-body" id="conflict-list">
+            <!-- populated by JS -->
+          </div>
+        </div>
+
       </div><!-- /view-dashboard -->
 
       <!-- ── TABLE ── -->
@@ -1337,6 +1372,22 @@ tr.overdue td.td-name { color: var(--red); }
             <div class="settings-add-row">
               <input class="form-control" id="add-tags-input" placeholder="Tag name…" onkeydown="if(event.key==='Enter') Settings.addItem('tags')">
               <button class="btn btn-secondary btn-sm" onclick="Settings.addItem('tags')">Add</button>
+            </div>
+          </div>
+
+          <!-- Holiday Calendar — spans both columns -->
+          <div class="card" style="grid-column: 1 / -1">
+            <div class="card-header">
+              <span class="card-title">Holiday Calendar</span>
+              <span class="text-sm text-muted">Dates excluded from workday calculations (YYYY-MM-DD)</span>
+            </div>
+            <div class="settings-list" id="list-holidays"></div>
+            <div class="settings-add-row">
+              <input class="form-control" id="add-holidays-date" type="date" style="flex:0 0 160px"
+                onkeydown="if(event.key==='Enter') Settings.addHoliday()">
+              <input class="form-control" id="add-holidays-name" placeholder="Name (optional)"
+                onkeydown="if(event.key==='Enter') Settings.addHoliday()">
+              <button class="btn btn-secondary btn-sm" onclick="Settings.addHoliday()">Add</button>
             </div>
           </div>
 
@@ -1525,6 +1576,7 @@ const DEFAULT_SETTINGS = {
   priorities: ['Critical', 'High', 'Medium', 'Low'],
   statuses:   ['Not Started', 'Active', 'On Hold', 'Blocked', 'Completed'],
   tags:       ['calibration', 'measurement', 'accreditation', 'maintenance', 'ISO-17025', 'urgent'],
+  holidays:   [],   // YYYY-MM-DD strings excluded from workday calculations
 };
 
 /** Color map for priorities */
@@ -1576,15 +1628,16 @@ const WorkCalendar = {
     return d;
   },
 
-  /** Calculate end date given start, workdays, allocation % */
-  calcEndDate(startStr, workdays, allocPct) {
+  /** Calculate end date given start, workdays, allocation %, optional holiday list */
+  calcEndDate(startStr, workdays, allocPct, holidays) {
     if (!startStr || !workdays || workdays <= 0 || !allocPct || allocPct <= 0) return null;
+    const skipDates   = new Set(holidays || []);
     const calendarDays = Math.ceil(workdays / (allocPct / 100));
     let d = new Date(startStr + 'T00:00:00');
     let remaining = calendarDays;
     while (remaining > 0) {
       d = this.addDays(d, 1);
-      if (this.isWorkday(d)) remaining--;
+      if (this.isWorkday(d) && !skipDates.has(this.fmt(d))) remaining--;
     }
     return d;
   },
@@ -2017,7 +2070,7 @@ const App = {
     // Calculate end dates
     seed.forEach(t => {
       if (t.startDate && t.workdays && t.alloc) {
-        const end = WorkCalendar.calcEndDate(t.startDate, t.workdays, t.alloc);
+        const end = WorkCalendar.calcEndDate(t.startDate, t.workdays, t.alloc, AppState.settings.holidays);
         t.endDate = WorkCalendar.fmt(end);
       }
       AppState.saveTask(t);
@@ -2091,7 +2144,7 @@ const TaskModal = {
     // Recalculate end date
     let endDate = '';
     if (startDate && workdays > 0 && alloc > 0) {
-      const end = WorkCalendar.calcEndDate(startDate, workdays, alloc);
+      const end = WorkCalendar.calcEndDate(startDate, workdays, alloc, AppState.settings.holidays);
       endDate = WorkCalendar.fmt(end);
     }
 
@@ -2131,7 +2184,7 @@ const TaskModal = {
     const start    = document.getElementById('f-start').value;
     const workdays = parseFloat(document.getElementById('f-workdays').value) || 0;
     const alloc    = parseFloat(document.getElementById('f-alloc').value)    || 100;
-    const end      = WorkCalendar.calcEndDate(start, workdays, alloc);
+    const end      = WorkCalendar.calcEndDate(start, workdays, alloc, AppState.settings.holidays);
     document.getElementById('f-enddate').value = end ? WorkCalendar.fmt(end) : '';
   },
 
@@ -2154,6 +2207,59 @@ document.addEventListener('keydown', e => {
 });
 
 // ================================================================
+// CONFLICT DETECTION
+// ================================================================
+/**
+ * Returns an object keyed by person name. Each value is an array of conflict
+ * records — one per overlapping task pair where combined allocation > 100%.
+ * Only non-completed tasks with both dates and alloc > 0 are considered.
+ */
+function computeConflicts() {
+  const relevant = AppState.tasks.filter(t =>
+    t.person && t.startDate && t.endDate &&
+    (t.status || '').toLowerCase() !== 'completed' &&
+    (t.alloc || 0) > 0
+  );
+
+  const byPerson = {};
+  for (const t of relevant) {
+    (byPerson[t.person] = byPerson[t.person] || []).push(t);
+  }
+
+  const result = {};
+  for (const [person, tasks] of Object.entries(byPerson)) {
+    for (let i = 0; i < tasks.length; i++) {
+      for (let j = i + 1; j < tasks.length; j++) {
+        const a = tasks[i], b = tasks[j];
+        if (a.startDate <= b.endDate && b.startDate <= a.endDate) {
+          const totalAlloc = (a.alloc || 100) + (b.alloc || 100);
+          if (totalAlloc > 100) {
+            (result[person] = result[person] || []).push({
+              taskA: a, taskB: b, totalAlloc,
+              overlapStart: a.startDate > b.startDate ? a.startDate : b.startDate,
+              overlapEnd:   a.endDate   < b.endDate   ? a.endDate   : b.endDate,
+            });
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
+
+/** Returns a Set of task IDs that appear in at least one conflict. */
+function conflictingTaskIds() {
+  const ids = new Set();
+  for (const pairs of Object.values(computeConflicts())) {
+    for (const { taskA, taskB } of pairs) {
+      ids.add(taskA.id);
+      ids.add(taskB.id);
+    }
+  }
+  return ids;
+}
+
+// ================================================================
 // DASHBOARD
 // ================================================================
 const Dashboard = {
@@ -2171,15 +2277,18 @@ const Dashboard = {
     const overdue  = tasks.filter(t => t.endDate && t.endDate < today && (t.status||'').toLowerCase() !== 'completed').length;
     const completed= tasks.filter(t => (t.status||'').toLowerCase() === 'completed').length;
     const blocked  = tasks.filter(t => (t.status||'').toLowerCase() === 'blocked').length;
+    const conflicts = computeConflicts();
+    const overallocated = Object.keys(conflicts).length;
 
     // KPI grid
     const kpiGrid = document.getElementById('kpi-grid');
     kpiGrid.innerHTML = [
-      { label:'Total Tasks',   val:total,     sub:'in system',           color:'var(--accent)' },
-      { label:'Active',        val:active,    sub:'in progress',          color:'var(--green)' },
-      { label:'Overdue',       val:overdue,   sub:'past deadline',        color:overdue>0?'var(--red)':'var(--green)' },
-      { label:'Completed',     val:completed, sub:'done',                  color:'var(--text-3)' },
-      { label:'Blocked',       val:blocked,   sub:'need attention',        color:blocked>0?'var(--orange)':'var(--text-3)' },
+      { label:'Total Tasks',    val:total,         sub:'in system',        color:'var(--accent)' },
+      { label:'Active',         val:active,        sub:'in progress',      color:'var(--green)' },
+      { label:'Overdue',        val:overdue,       sub:'past deadline',    color:overdue>0?'var(--red)':'var(--green)' },
+      { label:'Completed',      val:completed,     sub:'done',             color:'var(--text-3)' },
+      { label:'Blocked',        val:blocked,       sub:'need attention',   color:blocked>0?'var(--orange)':'var(--text-3)' },
+      { label:'Overallocated',  val:overallocated, sub:'staff conflicts',  color:overallocated>0?'var(--orange)':'var(--text-3)' },
     ].map(k => `
       <div class="kpi-card">
         <div class="kpi-accent" style="background:${k.color}"></div>
@@ -2241,6 +2350,30 @@ const Dashboard = {
         </div>
       `;
     }).join('') || '<div class="text-muted text-sm" style="padding:12px 0">No upcoming deadlines</div>';
+
+    // Resource conflicts panel
+    const conflictCard = document.getElementById('card-conflicts');
+    const conflictList = document.getElementById('conflict-list');
+    if (conflictCard && conflictList) {
+      if (overallocated === 0) {
+        conflictCard.style.display = 'none';
+      } else {
+        conflictCard.style.display = '';
+        conflictList.innerHTML = Object.entries(conflicts).map(([person, pairs]) => {
+          const pairsHtml = pairs.map(({ taskA, taskB, totalAlloc, overlapStart, overlapEnd }) => `
+            <div class="conflict-pair">
+              <span class="conflict-tasks">
+                <span onclick="TaskModal.open('${taskA.id}')" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted">${escHtml(taskA.name)}</span>
+                <span style="color:var(--text-3)"> + </span>
+                <span onclick="TaskModal.open('${taskB.id}')" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted">${escHtml(taskB.name)}</span>
+              </span>
+              <span class="conflict-meta">${totalAlloc}% · ${overlapStart} – ${overlapEnd}</span>
+            </div>
+          `).join('');
+          return `<div class="conflict-person">${escHtml(person)}</div>${pairsHtml}`;
+        }).join('');
+      }
+    }
   },
 
   _redrawCharts() {
@@ -2419,8 +2552,10 @@ const TableView = {
       return;
     }
 
+    const conflictIds = conflictingTaskIds();
     tbody.innerHTML = tasks.map(t => {
       const overdue = t.endDate && t.endDate < today && (t.status||'').toLowerCase() !== 'completed';
+      const hasConflict = conflictIds.has(t.id);
       const tags = (t.tags||'').split(',').filter(Boolean).map(tag =>
         `<span class="tag-chip">${tag.trim()}</span>`
       ).join('');
@@ -2432,10 +2567,14 @@ const TableView = {
           <span class="prog-pct">${progPct}%</span>
         </div>`;
 
+      const personCell = hasConflict
+        ? `${escHtml(t.person||'')} <span title="Allocation conflict: this person is overallocated during this task's date range" style="color:var(--orange);cursor:help">⚠</span>`
+        : escHtml(t.person||'');
+
       return `<tr class="${overdue?'overdue':''}" onclick="TaskModal.open('${t.id}')">
         <td class="td-name">${escHtml(t.name||'')}</td>
         <td>${escHtml(t.lab||'')}</td>
-        <td>${escHtml(t.person||'')}</td>
+        <td>${personCell}</td>
         <td><span class="${statusBadgeClass(t.status)}">${escHtml(t.status||'')}</span></td>
         <td><span class="${priorityBadgeClass(t.priority)}">${escHtml(t.priority||'')}</span></td>
         <td class="td-mono">${t.startDate||'—'}</td>
@@ -2903,6 +3042,7 @@ const Settings = {
     this._renderList('list-priorities', s.priorities, 'priorities');
     this._renderList('list-statuses',   s.statuses,   'statuses');
     this._renderList('list-tags',       s.tags,       'tags');
+    this._renderHolidays('list-holidays', s.holidays || []);
 
     // Autosave interval
     const mins = s.autosaveIntervalMinutes ?? 5;
@@ -2923,6 +3063,53 @@ const Settings = {
     this.render();
     Storage.save();
     Toast.show(mins === 0 ? 'Periodic autosave disabled' : `Autosave interval set to ${mins} min`, 'success');
+  },
+
+  _renderHolidays(containerId, items) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const sorted = [...items].sort();
+    el.innerHTML = sorted.map((entry, i) => {
+      const date = entry.slice(0, 10);
+      const name = entry.slice(11).trim();
+      const dow  = WorkCalendar.parse(date);
+      const dayLabel = dow ? dow.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' }) : date;
+      return `
+        <div class="settings-list-item">
+          <span class="item-name" style="font-family:var(--mono);font-size:12px">${dayLabel}${name ? ' — ' + escHtml(name) : ''}</span>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="Settings.removeHoliday(${items.indexOf(entry)})" title="Remove" style="color:var(--text-3);font-size:11px">✕</button>
+        </div>`;
+    }).join('') || '<div style="font-size:12px;color:var(--text-3);padding:6px 0">No holidays configured</div>';
+  },
+
+  addHoliday() {
+    const dateInput = document.getElementById('add-holidays-date');
+    const nameInput = document.getElementById('add-holidays-name');
+    if (!dateInput) return;
+    const date = dateInput.value;
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      Toast.show('Please select a valid date', 'error');
+      return;
+    }
+    const name    = nameInput ? nameInput.value.trim() : '';
+    const entry   = name ? `${date} ${name}` : date;
+    if (!AppState.settings.holidays) AppState.settings.holidays = [];
+    if (AppState.settings.holidays.some(h => h.slice(0, 10) === date)) {
+      Toast.show(`${date} is already in the holiday list`, 'error');
+      return;
+    }
+    AppState.settings.holidays.push(entry);
+    dateInput.value = '';
+    if (nameInput) nameInput.value = '';
+    this.render();
+    Storage.save();
+    Toast.show(`Holiday added: ${entry}`, 'success');
+  },
+
+  removeHoliday(idx) {
+    AppState.settings.holidays.splice(idx, 1);
+    this.render();
+    Storage.save();
   },
 
   _renderList(containerId, items, key) {
