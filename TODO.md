@@ -6,21 +6,7 @@ Items grouped by priority. Bugs are confirmed against the current source.
 
 ## 🔴 Bugs (confirmed)
 
-### 1. GanttFilters populates wrong data
-**File:** `GanttFilters.populate()` (lines 2872–2874)  
-Both `gantt-filter-person` and `gantt-filter-status` are populated with
-`AppState.settings.labs` instead of `.persons` and `.statuses`. Person and
-status filtering in the Gantt view is completely broken as a result.
-
-**Fix:** Pass the correct arrays.
-```js
-setOpts('gantt-filter-person', 'All Staff',    AppState.settings.persons);
-setOpts('gantt-filter-status', 'All Statuses', AppState.settings.statuses);
-```
-
----
-
-### 2. Task modal toast always shows "Task created"
+### 1. Task modal toast always shows "Task created"
 **File:** `TaskModal.save()` (line 2298)  
 `this.close()` is called at line 2296, which sets `this._editId = null`.
 The toast at line 2298 then checks `this._editId`, which is always `null`,
