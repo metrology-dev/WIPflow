@@ -9,7 +9,7 @@
   =========================================================
   Version: 1.0.0
   Single-file, offline-first, no dependencies except optional CDN fonts.
-  All data stored in localStorage; portable via .labwip JSON project files.
+  All data stored in localStorage; portable via "Save as HTML" (embeds data in the file itself) or .labwip JSON export.
 
   Architecture:
   - AppState     : Central data store (tasks, settings)
@@ -1099,8 +1099,8 @@ tr.overdue td.td-name { color: var(--red); }
         <button class="btn btn-secondary btn-sm" onclick="Storage.manualSave()" title="Save now (Ctrl+S)">
           ⬡ Save
         </button>
-        <button class="btn btn-ghost btn-sm" onclick="Storage.exportFile()" title="Export project file">
-          ↑ Export
+        <button class="btn btn-ghost btn-sm" onclick="Storage.exportHTML()" title="Save self-contained HTML (portable)">
+          ↓ Save as HTML
         </button>
         <button class="btn btn-ghost btn-sm" onclick="Storage.triggerImport()" title="Import project file">
           ↓ Import
@@ -1380,10 +1380,11 @@ tr.overdue td.td-name { color: var(--red); }
               <div class="card-header"><span class="card-title">Data Management</span></div>
               <div class="data-actions">
                 <div style="font-size:12px;color:var(--text-3);line-height:1.6;padding:2px 0 6px">
-                  Data is saved in <strong style="color:var(--text-2)">localStorage</strong> and embedded inside this HTML file on every save.
-                  A <strong style="color:var(--text-2)">labwip-autosave.labwip</strong> is also downloaded automatically — keep it next to <code style="font-family:var(--mono);font-size:11px">index.html</code> so data moves with the file.
+                  Data is saved automatically in <strong style="color:var(--text-2)">localStorage</strong>.
+                  To make the file portable, use <strong style="color:var(--text-2)">Save as HTML</strong> — it downloads a self-contained copy of WIPflow.html with all data embedded. Replace your working file with that download to carry your data with the file.
                 </div>
-                <button class="btn btn-secondary" onclick="Storage.exportFile()">↑ Export named snapshot (.labwip)</button>
+                <button class="btn btn-secondary" onclick="Storage.exportHTML()">↓ Save as self-contained HTML</button>
+                <button class="btn btn-secondary" onclick="Storage.exportFile()">↑ Export backup snapshot (.labwip)</button>
                 <button class="btn btn-secondary" onclick="Storage.triggerImport()">↓ Import .labwip file</button>
                 <button class="btn btn-secondary" onclick="Storage.exportCSV()">↑ Export CSV</button>
                 <div class="divider"></div>
@@ -1634,7 +1635,7 @@ const AppState = {
       this.tasks[idx] = Object.assign(this.tasks[idx], data, { modified: now });
       return this.tasks[idx];
     } else {
-      const task = Object.assign({ id: this.newId(), created: now, modified: now }, data);
+      const task = Object.assign({}, data, { id: data.id || this.newId(), created: now, modified: now });
       this.tasks.push(task);
       return task;
     }
@@ -1688,19 +1689,15 @@ const AppState = {
 };
 
 // ================================================================
-// STORAGE — localStorage + embedded HTML data + auto-export .labwip
+// STORAGE — localStorage + portable self-contained HTML export
 // ================================================================
 const Storage = {
   _dirty: true,
-  // Fixed filename so each save silently replaces the previous one in the
-  // browser's download folder — user should keep it next to index.html.
-  AUTOSAVE_FILENAME: 'labwip-autosave.labwip',
 
   /**
-   * Save to BOTH localStorage AND the embedded <script> tag inside this HTML
-   * file. The embedded tag makes the file self-contained: if you copy/move
-   * index.html the data is already inside it. Also triggers a silent
-   * auto-export .labwip download so a portable backup is always current.
+   * Save to localStorage and update the embedded <script> tag in the
+   * in-memory DOM (so exportHTML() can serialise a self-contained file).
+   * No file download happens here — use exportHTML() for portability.
    */
   save() {
     const json = JSON.stringify(AppState.toJSON(), null, 2);
@@ -1710,7 +1707,8 @@ const Storage = {
     } catch(e) {
       console.warn('localStorage save failed:', e);
     }
-    // 2. Rewrite the embedded <script> tag so data travels with the file
+    // 2. Keep the embedded <script> tag up to date in the DOM so that
+    //    exportHTML() always captures current data without a second serialise.
     try {
       const tag = document.getElementById('labwip-embedded-data');
       if (tag) tag.textContent = json;
@@ -1719,8 +1717,6 @@ const Storage = {
     }
     this._dirty = false;
     this._setIndicator(true);
-    // 3. Silent auto-export — always overwrites labwip-autosave.labwip
-    this._silentExport(json);
   },
 
   /**
@@ -1772,27 +1768,30 @@ const Storage = {
   },
 
   /**
-   * Silent auto-export: creates a download of labwip-autosave.labwip.
-   * Throttled to at most once per save call, but we skip it silently if the
-   * tab has no user interaction yet (browsers block downloads without it).
+   * Export a self-contained HTML file with all data embedded inside the
+   * <script id="labwip-embedded-data"> tag. The downloaded file is a fully
+   * portable copy of the app — open it anywhere and your data is there.
+   * Replace your working WIPflow.html with the downloaded file to persist.
    */
-  _silentExport(json) {
-    try {
-      const blob = new Blob([json], {type:'application/json'});
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = this.AUTOSAVE_FILENAME;
-      // Must be in DOM for Firefox
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch(e) {
-      // Silent — download blocked by browser policy is non-fatal
-      console.warn('Auto-export skipped:', e);
-    }
+  exportHTML() {
+    // Ensure the embedded tag is current (save() keeps it up to date, but
+    // call explicitly here in case exportHTML is invoked before the first save)
+    const json = JSON.stringify(AppState.toJSON(), null, 2);
+    const tag  = document.getElementById('labwip-embedded-data');
+    if (tag) tag.textContent = json;
+
+    const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    const blob = new Blob([html], {type: 'text/html'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'WIPflow.html';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    Toast.show('Saved — replace your WIPflow.html with the downloaded file', 'success');
   },
 
   _setIndicator(saved) {
