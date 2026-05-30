@@ -2826,7 +2826,8 @@ const Gantt = {
         ctx.fillStyle = 'rgba(227,98,43,0.22)';
         ctx.fillRect(x, 18, pd, 32);
       } else if (dow === 0 || dow === 6) {
-        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+        ctx.fillStyle = document.documentElement.dataset.theme === 'light'
+          ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.07)';
         ctx.fillRect(x, 18, pd, 32);
       }
     }
@@ -2944,7 +2945,8 @@ const Gantt = {
         ctx.fillStyle = 'rgba(227,98,43,0.13)';
         ctx.fillRect(i*pd, 0, pd, H);
       } else if (d.getDay() === 0 || d.getDay() === 6) {
-        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+        ctx.fillStyle = document.documentElement.dataset.theme === 'light'
+          ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.07)';
         ctx.fillRect(i*pd, 0, pd, H);
       }
     }
