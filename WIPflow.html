@@ -1,0 +1,3003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LabWIP — Laboratory Work-in-Progress Tracker</title>
+<!--
+  LabWIP — Standalone Laboratory WIP Tracking Application
+  =========================================================
+  Version: 1.0.0
+  Single-file, offline-first, no dependencies except optional CDN fonts.
+  All data stored in localStorage; portable via .labwip JSON project files.
+
+  Architecture:
+  - AppState     : Central data store (tasks, settings)
+  - Storage      : localStorage persistence + file import/export
+  - Views        : Dashboard, Table, Gantt, Settings
+  - TaskModal    : Create/Edit task dialog
+  - WorkCalendar : Workday calculations
+  - Charts       : Canvas-based mini charts
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ================================================================
+   CSS CUSTOM PROPERTIES — Design tokens
+   ================================================================ */
+:root {
+  --bg:         #0d1117;
+  --bg-2:       #161b22;
+  --bg-3:       #21262d;
+  --bg-4:       #30363d;
+  --border:     #30363d;
+  --border-2:   #3d444d;
+  --text:       #e6edf3;
+  --text-2:     #8b949e;
+  --text-3:     #6e7681;
+  --accent:     #1f6feb;
+  --accent-2:   #388bfd;
+  --accent-hl:  rgba(31,111,235,0.15);
+  --green:      #2ea043;
+  --green-bg:   rgba(46,160,67,0.15);
+  --yellow:     #d29922;
+  --yellow-bg:  rgba(210,153,34,0.15);
+  --red:        #da3633;
+  --red-bg:     rgba(218,54,51,0.15);
+  --orange:     #e3622b;
+  --orange-bg:  rgba(227,98,43,0.15);
+  --purple:     #8957e5;
+  --purple-bg:  rgba(137,87,229,0.15);
+  --cyan:       #1b7c83;
+  --shadow:     0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.5);
+  --radius:     6px;
+  --radius-lg:  10px;
+  --font:       'IBM Plex Sans', system-ui, sans-serif;
+  --mono:       'IBM Plex Mono', 'Courier New', monospace;
+  --sidebar-w:  220px;
+  --header-h:   52px;
+}
+
+[data-theme="light"] {
+  --bg:         #f6f8fa;
+  --bg-2:       #ffffff;
+  --bg-3:       #f0f2f4;
+  --bg-4:       #e4e8ec;
+  --border:     #d0d7de;
+  --border-2:   #b9c0ca;
+  --text:       #1f2328;
+  --text-2:     #57606a;
+  --text-3:     #8c959f;
+  --accent:     #0969da;
+  --accent-2:   #0550ae;
+  --accent-hl:  rgba(9,105,218,0.1);
+  --shadow:     0 1px 3px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg:  0 8px 24px rgba(0,0,0,0.14);
+}
+
+/* ================================================================
+   RESET & BASE
+   ================================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent-2); text-decoration: none; }
+button { cursor: pointer; font-family: var(--font); }
+input, select, textarea { font-family: var(--font); }
+
+:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+/* ================================================================
+   APP LAYOUT
+   ================================================================ */
+#app {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── SIDEBAR ── */
+#sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--bg-2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 10;
+  transition: width 0.2s ease;
+}
+
+#sidebar-logo {
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#sidebar-logo .logo-icon {
+  width: 30px;
+  height: 30px;
+  background: var(--accent);
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 13px;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+#sidebar-logo .logo-text {
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+
+#sidebar-logo .logo-sub {
+  font-size: 10px;
+  color: var(--text-3);
+  font-family: var(--mono);
+  letter-spacing: 0.05em;
+}
+
+#sidebar-nav {
+  flex: 1;
+  padding: 10px 8px;
+  overflow-y: auto;
+}
+
+.nav-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding: 8px 10px 4px;
+  font-family: var(--mono);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  font-size: 13.5px;
+  margin-bottom: 1px;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.nav-item:hover { background: var(--bg-3); color: var(--text); }
+.nav-item.active { background: var(--accent-hl); color: var(--accent-2); }
+.nav-item.active .nav-icon { color: var(--accent-2); }
+
+.nav-icon { width: 16px; text-align: center; flex-shrink: 0; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--bg-4);
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+.nav-item.active .nav-badge { background: var(--accent-hl); color: var(--accent-2); }
+
+#sidebar-footer {
+  padding: 12px 8px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── MAIN ── */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ── TOP BAR ── */
+#topbar {
+  height: var(--header-h);
+  min-height: var(--header-h);
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  z-index: 5;
+}
+
+#topbar-title {
+  font-size: 15px;
+  font-weight: 600;
+  flex: 1;
+}
+
+#topbar-subtitle {
+  font-size: 12px;
+  color: var(--text-3);
+  font-family: var(--mono);
+}
+
+#topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+/* ── VIEW AREA ── */
+#view-area {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.view-panel {
+  display: none;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px;
+}
+
+.view-panel.active { display: flex; flex-direction: column; gap: 20px; }
+
+/* Gantt gets special scroll — do NOT set display here, let .view-panel / .view-panel.active handle it */
+#view-gantt { overflow: hidden; padding: 0; }
+#view-gantt.active { display: flex; flex-direction: column; }
+
+/* ================================================================
+   BUTTONS
+   ================================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.btn-primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
+
+.btn-secondary {
+  background: var(--bg-3);
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn-secondary:hover { background: var(--bg-4); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-2);
+  border-color: var(--border);
+}
+.btn-ghost:hover { background: var(--bg-3); color: var(--text); }
+
+.btn-danger {
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: var(--red);
+}
+.btn-danger:hover { background: var(--red); color: #fff; }
+
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-icon { padding: 6px 8px; }
+
+/* ================================================================
+   BADGES / CHIPS
+   ================================================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  font-family: var(--mono);
+  letter-spacing: 0.02em;
+}
+
+.badge-critical  { background: var(--red-bg);    color: var(--red);    border: 1px solid rgba(218,54,51,0.3); }
+.badge-high      { background: var(--orange-bg);  color: var(--orange); border: 1px solid rgba(227,98,43,0.3); }
+.badge-medium    { background: var(--yellow-bg);  color: var(--yellow); border: 1px solid rgba(210,153,34,0.3); }
+.badge-low       { background: var(--green-bg);   color: var(--green);  border: 1px solid rgba(46,160,67,0.3); }
+
+.badge-active      { background: var(--green-bg);   color: var(--green);  border: 1px solid rgba(46,160,67,0.3); }
+.badge-pending     { background: var(--yellow-bg);  color: var(--yellow); border: 1px solid rgba(210,153,34,0.3); }
+.badge-blocked     { background: var(--red-bg);     color: var(--red);    border: 1px solid rgba(218,54,51,0.3); }
+.badge-completed   { background: var(--bg-3);       color: var(--text-2); border: 1px solid var(--border); }
+.badge-on-hold     { background: var(--purple-bg);  color: var(--purple); border: 1px solid rgba(137,87,229,0.3); }
+.badge-not-started { background: var(--bg-3);       color: var(--text-3); border: 1px solid var(--border); }
+
+/* ================================================================
+   FORM ELEMENTS
+   ================================================================ */
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+  font-family: var(--mono);
+  letter-spacing: 0.03em;
+}
+.form-label .required { color: var(--red); margin-left: 2px; }
+
+.form-control {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: var(--font);
+  transition: border-color 0.15s;
+  width: 100%;
+}
+.form-control:focus { outline: none; border-color: var(--accent-2); }
+.form-control[readonly] { opacity: 0.6; cursor: default; }
+
+select.form-control { cursor: pointer; }
+textarea.form-control { resize: vertical; min-height: 70px; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+
+/* Progress input */
+.progress-group { display: flex; align-items: center; gap: 10px; }
+.progress-group input[type=range] { flex: 1; accent-color: var(--accent); }
+.progress-group .progress-val {
+  font-family: var(--mono);
+  font-size: 12px;
+  width: 38px;
+  text-align: right;
+  color: var(--text-2);
+}
+
+/* ================================================================
+   CARDS / PANELS
+   ================================================================ */
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.card-header {
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--mono);
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+  text-transform: uppercase;
+  flex: 1;
+}
+
+.card-body { padding: 16px 18px; }
+
+/* ================================================================
+   DASHBOARD VIEW
+   ================================================================ */
+.dash-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.kpi-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.kpi-card:hover { border-color: var(--border-2); }
+
+.kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-3);
+  font-family: var(--mono);
+}
+
+.kpi-value {
+  font-size: 32px;
+  font-weight: 300;
+  font-family: var(--mono);
+  line-height: 1;
+  color: var(--text);
+}
+
+.kpi-sub {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.kpi-accent {
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  border-radius: 3px 0 0 3px;
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.dash-grid.triple { grid-template-columns: 2fr 1fr 1fr; }
+
+@media (max-width: 1100px) {
+  .dash-grid, .dash-grid.triple { grid-template-columns: 1fr; }
+}
+
+/* Chart canvas */
+.chart-container {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+
+.chart-container canvas {
+  display: block;
+  width: 100% !important;
+}
+
+/* Workload bar */
+.workload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.workload-row:last-child { border-bottom: none; }
+.workload-name { flex: 0 0 120px; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workload-bar-bg { flex: 1; height: 6px; background: var(--bg-3); border-radius: 3px; overflow: hidden; }
+.workload-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+.workload-pct { flex: 0 0 38px; font-size: 12px; font-family: var(--mono); color: var(--text-2); text-align: right; }
+
+/* Near-deadline list */
+.deadline-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.deadline-item:last-child { border-bottom: none; }
+.deadline-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deadline-date { font-family: var(--mono); font-size: 11px; color: var(--text-3); flex-shrink: 0; }
+
+/* ================================================================
+   TABLE VIEW
+   ================================================================ */
+#view-table { padding: 0; }
+#view-table.active { display: flex; flex-direction: column; overflow: hidden; }
+
+.table-toolbar {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--bg-2);
+  flex-shrink: 0;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  flex: 0 0 240px;
+}
+.search-box input {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 13px;
+  width: 100%;
+}
+.search-box input:focus { outline: none; }
+.search-box svg { color: var(--text-3); flex-shrink: 0; }
+
+.filter-select {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 5px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.filter-select:focus { outline: none; border-color: var(--accent-2); }
+
+.table-wrap {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.data-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+.data-table th {
+  background: var(--bg-2);
+  border-bottom: 2px solid var(--border);
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  font-family: var(--mono);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.data-table th:hover { color: var(--text-2); }
+.data-table th.sorted-asc::after  { content: ' ▲'; font-size: 9px; }
+.data-table th.sorted-desc::after { content: ' ▼'; font-size: 9px; }
+
+.data-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+  cursor: pointer;
+}
+.data-table tbody tr:hover { background: var(--bg-3); }
+.data-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.015); }
+.data-table tbody tr:nth-child(even):hover { background: var(--bg-3); }
+
+.data-table td {
+  padding: 9px 12px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.td-name { font-weight: 500; color: var(--text); }
+.td-mono { font-family: var(--mono); font-size: 12px; color: var(--text-2); }
+
+/* Progress bar in table */
+.prog-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 100px;
+}
+.prog-bar-bg { flex: 1; height: 5px; background: var(--bg-4); border-radius: 3px; overflow: hidden; }
+.prog-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
+.prog-pct { font-family: var(--mono); font-size: 11px; color: var(--text-3); flex-shrink: 0; width: 30px; }
+
+.table-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-3);
+  font-size: 14px;
+}
+
+.table-footer {
+  padding: 10px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-3);
+  background: var(--bg-2);
+  flex-shrink: 0;
+  font-family: var(--mono);
+}
+
+/* Tag chips in table */
+.tag-chip {
+  display: inline-block;
+  background: var(--bg-4);
+  color: var(--text-2);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 11px;
+  margin: 0 2px 0 0;
+  font-family: var(--mono);
+}
+
+/* ================================================================
+   GANTT VIEW
+   ================================================================ */
+.gantt-toolbar {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-2);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.gantt-zoom-group {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.gantt-zoom-btn {
+  background: var(--bg-3);
+  border: none;
+  color: var(--text-2);
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s;
+  font-family: var(--mono);
+}
+.gantt-zoom-btn:hover { background: var(--bg-4); }
+.gantt-zoom-btn.active { background: var(--accent); color: #fff; }
+.gantt-zoom-btn + .gantt-zoom-btn { border-left: 1px solid var(--border); }
+
+#gantt-container {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+#gantt-header-wrap {
+  display: flex;
+  overflow: hidden;
+  flex-shrink: 0;
+  border-bottom: 2px solid var(--border);
+  background: var(--bg-2);
+}
+
+#gantt-left-header {
+  flex-shrink: 0;
+  background: var(--bg-2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  font-family: var(--mono);
+}
+
+#gantt-timeline-header {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  height: 50px;
+}
+
+#gantt-timeline-header canvas {
+  position: absolute;
+  top: 0; left: 0;
+}
+
+#gantt-body-wrap {
+  flex: 1;
+  overflow-x: scroll;
+  overflow-y: auto;
+  display: flex;
+  position: relative;
+}
+
+#gantt-task-list {
+  flex-shrink: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  background: var(--bg-2);
+}
+
+.gantt-task-row {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.gantt-task-row:hover { background: var(--bg-3); }
+.gantt-task-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.gantt-task-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#gantt-chart-area {
+  position: relative;
+  flex-shrink: 0;
+}
+
+#gantt-canvas { position: absolute; top: 0; left: 0; }
+
+#gantt-empty {
+  display: none;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--text-3);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Tooltip */
+#gantt-tooltip {
+  position: fixed;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 12px;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  z-index: 1000;
+  width: 290px;
+  display: none;
+}
+
+#gantt-tooltip .tt-title { font-weight: 600; margin-bottom: 6px; font-size: 13px; word-break: break-word; white-space: normal; }
+#gantt-tooltip .tt-row { display: flex; gap: 8px; margin-bottom: 3px; }
+#gantt-tooltip .tt-label { color: var(--text-3); flex: 0 0 68px; font-family: var(--mono); font-size: 11px; }
+
+/* ================================================================
+   SETTINGS VIEW
+   ================================================================ */
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .settings-grid { grid-template-columns: 1fr; }
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+}
+
+.settings-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+.settings-list-item:hover { background: var(--bg-3); }
+.settings-list-item .item-name { flex: 1; }
+.settings-list-item .item-color {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.settings-add-row {
+  display: flex;
+  gap: 8px;
+  padding: 4px 16px 12px;
+  align-items: center;
+}
+.settings-add-row input { flex: 1; }
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 14px 18px 18px;
+}
+
+.theme-option {
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  text-align: center;
+  font-size: 13px;
+}
+.theme-option:hover { border-color: var(--border-2); }
+.theme-option.active { border-color: var(--accent-2); }
+.theme-option .theme-preview {
+  height: 36px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.data-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px;
+}
+
+/* ================================================================
+   MODAL
+   ================================================================ */
+#modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 100;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 20px;
+  overflow-y: auto;
+  backdrop-filter: blur(2px);
+}
+
+#modal-overlay.open { display: flex; }
+
+#modal {
+  background: var(--bg-2);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 720px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: modal-in 0.18s ease;
+}
+
+@keyframes modal-in {
+  from { transform: translateY(-12px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+#modal-header {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#modal-title { font-size: 15px; font-weight: 600; flex: 1; }
+
+#modal-body { padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+
+#modal-footer {
+  padding: 16px 22px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--bg-3);
+}
+
+#modal-footer-left  { display: flex; gap: 8px; }
+#modal-footer-right { display: flex; gap: 8px; }
+
+/* ================================================================
+   NOTIFICATIONS / TOAST
+   ================================================================ */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  font-size: 13px;
+  box-shadow: var(--shadow-lg);
+  animation: toast-in 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 300px;
+}
+
+.toast-success { border-left: 3px solid var(--green); }
+.toast-error   { border-left: 3px solid var(--red); }
+.toast-info    { border-left: 3px solid var(--accent); }
+
+@keyframes toast-in {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* ================================================================
+   SCROLLBAR STYLE
+   ================================================================ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-2); }
+
+/* ================================================================
+   MISC UTILITIES
+   ================================================================ */
+.sep { flex: 1; }
+.divider { height: 1px; background: var(--border); margin: 4px 0; }
+.text-mono { font-family: var(--mono); }
+.text-muted { color: var(--text-3); }
+.text-sm { font-size: 12px; }
+.flex-center { display: flex; align-items: center; gap: 8px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* Autosave indicator */
+#autosave-indicator {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+#autosave-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); transition: background 0.3s; }
+#autosave-dot.saved { background: var(--green); }
+
+/* Overdue highlight */
+tr.overdue td { color: var(--text); }
+tr.overdue td.td-name { color: var(--red); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── SIDEBAR ── -->
+  <aside id="sidebar">
+    <div id="sidebar-logo">
+      <div class="logo-icon">LW</div>
+      <div>
+        <div class="logo-text">LabWIP</div>
+        <div class="logo-sub">WIP TRACKER</div>
+      </div>
+    </div>
+
+    <nav id="sidebar-nav">
+      <div class="nav-section-label">Views</div>
+      <button class="nav-item active" data-view="dashboard" onclick="App.switchView('dashboard')">
+        <span class="nav-icon">◈</span> Dashboard
+      </button>
+      <button class="nav-item" data-view="table" onclick="App.switchView('table')">
+        <span class="nav-icon">≡</span> Table
+        <span class="nav-badge" id="nav-badge-table">0</span>
+      </button>
+      <button class="nav-item" data-view="gantt" onclick="App.switchView('gantt')">
+        <span class="nav-icon">▤</span> Gantt
+      </button>
+
+      <div class="divider" style="margin:10px 0"></div>
+      <div class="nav-section-label">Manage</div>
+
+      <button class="nav-item" data-view="settings" onclick="App.switchView('settings')">
+        <span class="nav-icon">⚙</span> Settings
+      </button>
+    </nav>
+
+    <div id="sidebar-footer">
+      <button class="btn btn-primary btn-sm" onclick="TaskModal.open()" style="width:100%;justify-content:center">
+        + New Task
+      </button>
+      <div id="autosave-indicator" style="justify-content:center;margin-top:6px">
+        <span id="autosave-dot"></span>
+        <span id="autosave-text">Unsaved</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div id="main">
+
+    <!-- TOP BAR -->
+    <header id="topbar">
+      <div>
+        <div id="topbar-title">Dashboard</div>
+        <div id="topbar-subtitle" class="text-mono text-muted text-sm"></div>
+      </div>
+      <span class="sep"></span>
+      <div id="topbar-actions">
+        <button class="btn btn-secondary btn-sm" onclick="Storage.manualSave()" title="Save now (Ctrl+S)">
+          ⬡ Save
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="Storage.exportFile()" title="Export project file">
+          ↑ Export
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="Storage.triggerImport()" title="Import project file">
+          ↓ Import
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="TaskModal.open()">
+          + New Task
+        </button>
+        <input type="file" id="import-file-input" accept=".labwip,.json" style="display:none" onchange="Storage.handleImport(event)">
+      </div>
+    </header>
+
+    <!-- VIEW AREA -->
+    <div id="view-area">
+
+      <!-- ── DASHBOARD ── -->
+      <div id="view-dashboard" class="view-panel active">
+
+        <div class="dash-kpi-grid" id="kpi-grid">
+          <!-- populated by JS -->
+        </div>
+
+        <div class="dash-grid triple">
+          <!-- Status chart -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Status Distribution</span>
+            </div>
+            <div class="chart-container" style="height:190px;padding:8px 4px 8px">
+              <canvas id="chart-status"></canvas>
+            </div>
+          </div>
+
+          <!-- Priority chart -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">By Priority</span>
+            </div>
+            <div class="chart-container" style="height:190px;padding:8px 4px 8px">
+              <canvas id="chart-priority"></canvas>
+            </div>
+          </div>
+
+          <!-- Lab chart -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">By Laboratory</span>
+            </div>
+            <div class="chart-container" style="height:190px;padding:8px 4px 8px">
+              <canvas id="chart-lab"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <!-- Staff workload -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Staff Workload</span>
+              <span class="text-sm text-muted text-mono">active tasks / person</span>
+            </div>
+            <div class="card-body" id="staff-workload">
+              <!-- populated by JS -->
+            </div>
+          </div>
+
+          <!-- Near deadlines -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Upcoming Deadlines</span>
+              <span class="text-sm text-muted text-mono">next 14 days</span>
+            </div>
+            <div class="card-body" id="near-deadlines">
+              <!-- populated by JS -->
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /view-dashboard -->
+
+      <!-- ── TABLE ── -->
+      <div id="view-table" class="view-panel">
+        <div class="table-toolbar">
+          <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="table-search" placeholder="Search tasks…" oninput="TableView.applyFilters()">
+          </div>
+          <select class="filter-select" id="filter-lab" onchange="TableView.applyFilters()">
+            <option value="">All Labs</option>
+          </select>
+          <select class="filter-select" id="filter-person" onchange="TableView.applyFilters()">
+            <option value="">All Staff</option>
+          </select>
+          <select class="filter-select" id="filter-status" onchange="TableView.applyFilters()">
+            <option value="">All Statuses</option>
+          </select>
+          <select class="filter-select" id="filter-priority" onchange="TableView.applyFilters()">
+            <option value="">All Priorities</option>
+          </select>
+          <span class="sep"></span>
+          <button class="btn btn-ghost btn-sm" onclick="TableView.clearFilters()">Clear Filters</button>
+        </div>
+
+        <div class="table-wrap" id="table-wrap">
+          <table class="data-table" id="data-table">
+            <thead>
+              <tr>
+                <th data-col="name"       onclick="TableView.sortBy('name')">Task</th>
+                <th data-col="lab"        onclick="TableView.sortBy('lab')">Lab</th>
+                <th data-col="person"     onclick="TableView.sortBy('person')">Person</th>
+                <th data-col="status"     onclick="TableView.sortBy('status')">Status</th>
+                <th data-col="priority"   onclick="TableView.sortBy('priority')">Priority</th>
+                <th data-col="startDate"  onclick="TableView.sortBy('startDate')">Start</th>
+                <th data-col="endDate"    onclick="TableView.sortBy('endDate')">End (calc.)</th>
+                <th data-col="workdays"   onclick="TableView.sortBy('workdays')">Days</th>
+                <th data-col="alloc"      onclick="TableView.sortBy('alloc')">Alloc%</th>
+                <th data-col="progress"   onclick="TableView.sortBy('progress')">Progress</th>
+                <th data-col="tags">Tags</th>
+                <th style="width:40px"></th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          <span id="table-count">0 tasks</span>
+          <span class="sep"></span>
+          <span id="table-sort-info"></span>
+        </div>
+      </div><!-- /view-table -->
+
+      <!-- ── GANTT ── -->
+      <div id="view-gantt" class="view-panel">
+        <div class="gantt-toolbar">
+          <div class="gantt-zoom-group">
+            <button class="gantt-zoom-btn" data-zoom="day"   onclick="Gantt.setZoom('day')">Day</button>
+            <button class="gantt-zoom-btn active" data-zoom="week"  onclick="Gantt.setZoom('week')">Week</button>
+            <button class="gantt-zoom-btn" data-zoom="month" onclick="Gantt.setZoom('month')">Month</button>
+          </div>
+          <select class="filter-select" id="gantt-filter-lab" onchange="Gantt.applyFilters()">
+            <option value="">All Labs</option>
+          </select>
+          <select class="filter-select" id="gantt-filter-person" onchange="Gantt.applyFilters()">
+            <option value="">All Staff</option>
+          </select>
+          <select class="filter-select" id="gantt-filter-status" onchange="Gantt.applyFilters()">
+            <option value="">All Statuses</option>
+          </select>
+          <span class="sep"></span>
+          <button class="btn btn-ghost btn-sm" onclick="Gantt.goToToday()">Today</button>
+        </div>
+
+        <div id="gantt-container">
+          <div id="gantt-header-wrap">
+            <div id="gantt-left-header">Tasks</div>
+            <div id="gantt-timeline-scroll" style="flex:1;overflow:hidden;position:relative;height:50px">
+              <canvas id="gantt-timeline-canvas"></canvas>
+            </div>
+          </div>
+          <div id="gantt-body-wrap">
+            <div id="gantt-task-list"></div>
+            <div id="gantt-chart-area">
+              <canvas id="gantt-canvas"></canvas>
+              <div id="gantt-empty">
+                <div style="font-size:28px;margin-bottom:8px">▤</div>
+                No tasks to display
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="gantt-tooltip"></div>
+      </div><!-- /view-gantt -->
+
+      <!-- ── SETTINGS ── -->
+      <div id="view-settings" class="view-panel">
+
+        <div class="settings-grid">
+
+          <!-- Laboratories -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Laboratories</span>
+            </div>
+            <div class="settings-list" id="list-labs"></div>
+            <div class="settings-add-row">
+              <input class="form-control" id="add-labs-input" placeholder="New laboratory name…" onkeydown="if(event.key==='Enter') Settings.addItem('labs')">
+              <button class="btn btn-secondary btn-sm" onclick="Settings.addItem('labs')">Add</button>
+            </div>
+          </div>
+
+          <!-- Persons -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Responsible Persons</span>
+            </div>
+            <div class="settings-list" id="list-persons"></div>
+            <div class="settings-add-row">
+              <input class="form-control" id="add-persons-input" placeholder="Name…" onkeydown="if(event.key==='Enter') Settings.addItem('persons')">
+              <button class="btn btn-secondary btn-sm" onclick="Settings.addItem('persons')">Add</button>
+            </div>
+          </div>
+
+          <!-- Priorities -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Priority Levels</span>
+            </div>
+            <div class="settings-list" id="list-priorities"></div>
+            <div class="settings-add-row">
+              <input class="form-control" id="add-priorities-input" placeholder="Priority name…" onkeydown="if(event.key==='Enter') Settings.addItem('priorities')">
+              <button class="btn btn-secondary btn-sm" onclick="Settings.addItem('priorities')">Add</button>
+            </div>
+          </div>
+
+          <!-- Statuses -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Task Statuses</span>
+            </div>
+            <div class="settings-list" id="list-statuses"></div>
+            <div class="settings-add-row">
+              <input class="form-control" id="add-statuses-input" placeholder="Status name…" onkeydown="if(event.key==='Enter') Settings.addItem('statuses')">
+              <button class="btn btn-secondary btn-sm" onclick="Settings.addItem('statuses')">Add</button>
+            </div>
+          </div>
+
+          <!-- Tags -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Tags</span>
+            </div>
+            <div class="settings-list" id="list-tags"></div>
+            <div class="settings-add-row">
+              <input class="form-control" id="add-tags-input" placeholder="Tag name…" onkeydown="if(event.key==='Enter') Settings.addItem('tags')">
+              <button class="btn btn-secondary btn-sm" onclick="Settings.addItem('tags')">Add</button>
+            </div>
+          </div>
+
+          <!-- Theme & Data -->
+          <div style="display:flex;flex-direction:column;gap:16px">
+
+            <div class="card">
+              <div class="card-header"><span class="card-title">Theme</span></div>
+              <div class="theme-grid">
+                <div class="theme-option active" id="theme-dark" onclick="Settings.setTheme('dark')">
+                  <div class="theme-preview" style="background:linear-gradient(135deg,#0d1117,#161b22)"></div>
+                  Dark
+                </div>
+                <div class="theme-option" id="theme-light" onclick="Settings.setTheme('light')">
+                  <div class="theme-preview" style="background:linear-gradient(135deg,#f6f8fa,#ffffff)"></div>
+                  Light
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><span class="card-title">Autosave</span></div>
+              <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+                <div class="form-group">
+                  <label class="form-label">Interval (minutes)</label>
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <input class="form-control" id="setting-autosave-interval"
+                      type="number" min="0" max="60" step="1"
+                      style="width:90px"
+                      onchange="Settings.setAutosaveInterval(this.value)">
+                    <span class="text-sm text-muted">Current: <span id="setting-autosave-display"></span></span>
+                  </div>
+                </div>
+                <div style="font-size:12px;color:var(--text-3);line-height:1.6">
+                  Set to <strong style="color:var(--text-2)">0</strong> to disable the periodic timer. Data is still saved automatically on every change and via <strong style="color:var(--text-2)">⬡ Save</strong> / <kbd style="font-family:var(--mono);font-size:10px;background:var(--bg-4);border:1px solid var(--border);border-radius:3px;padding:1px 5px">Ctrl+S</kbd>.
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><span class="card-title">Data Management</span></div>
+              <div class="data-actions">
+                <div style="font-size:12px;color:var(--text-3);line-height:1.6;padding:2px 0 6px">
+                  Data is saved in <strong style="color:var(--text-2)">localStorage</strong> and embedded inside this HTML file on every save.
+                  A <strong style="color:var(--text-2)">labwip-autosave.labwip</strong> is also downloaded automatically — keep it next to <code style="font-family:var(--mono);font-size:11px">index.html</code> so data moves with the file.
+                </div>
+                <button class="btn btn-secondary" onclick="Storage.exportFile()">↑ Export named snapshot (.labwip)</button>
+                <button class="btn btn-secondary" onclick="Storage.triggerImport()">↓ Import .labwip file</button>
+                <button class="btn btn-secondary" onclick="Storage.exportCSV()">↑ Export CSV</button>
+                <div class="divider"></div>
+                <button class="btn btn-danger" onclick="Settings.clearAllData()">⚠ Clear All Data</button>
+              </div>
+            </div>
+
+          </div>
+
+        </div><!-- /settings-grid -->
+      </div><!-- /view-settings -->
+
+    </div><!-- /view-area -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- EMBEDDED DATA — rewritten on every save so the file is self-contained and portable.
+     Do not edit manually. Format: JSON, same schema as .labwip export. -->
+<script id="labwip-embedded-data" type="application/json"></script>
+
+<!-- TASK MODAL -->
+<div id="modal-overlay" onclick="if(event.target===this)TaskModal.close()">
+  <div id="modal" role="dialog" aria-modal="true">
+    <div id="modal-header">
+      <div id="modal-title">New Task</div>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="TaskModal.close()" title="Close">✕</button>
+    </div>
+    <div id="modal-body">
+
+      <div class="form-row">
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Task Name <span class="required">*</span></label>
+          <input class="form-control" id="f-name" type="text" placeholder="Descriptive task name…" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Laboratory <span class="required">*</span></label>
+          <select class="form-control" id="f-lab"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Responsible Person <span class="required">*</span></label>
+          <select class="form-control" id="f-person"></select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Priority <span class="required">*</span></label>
+          <select class="form-control" id="f-priority"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-control" id="f-status"></select>
+        </div>
+      </div>
+
+      <div class="form-row triple">
+        <div class="form-group">
+          <label class="form-label">Start Date</label>
+          <input class="form-control" id="f-start" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estimated Workdays</label>
+          <input class="form-control" id="f-workdays" type="number" min="0" step="0.5" placeholder="e.g. 10" oninput="TaskModal.calcEndDate()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Allocation %</label>
+          <input class="form-control" id="f-alloc" type="number" min="1" max="100" value="100" oninput="TaskModal.calcEndDate()">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Calculated End Date</label>
+        <input class="form-control" id="f-enddate" type="text" readonly placeholder="Calculated automatically">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Progress (0–100%)</label>
+        <div class="progress-group">
+          <input type="range" id="f-progress-range" min="0" max="100" value="0" oninput="document.getElementById('f-progress-val').textContent=this.value+'%';document.getElementById('f-progress').value=this.value">
+          <span class="progress-val" id="f-progress-val">0%</span>
+          <input type="hidden" id="f-progress" value="0">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-control" id="f-description" placeholder="Optional description or context…"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Tags (comma separated)</label>
+          <input class="form-control" id="f-tags" type="text" placeholder="e.g. calibration, urgent, isotope">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <input class="form-control" id="f-notes" type="text" placeholder="Short notes…">
+        </div>
+      </div>
+
+    </div><!-- /modal-body -->
+    <div id="modal-footer">
+      <div id="modal-footer-left">
+        <button class="btn btn-danger btn-sm" id="modal-delete-btn" onclick="TaskModal.deleteTask()" style="display:none">Delete Task</button>
+      </div>
+      <div id="modal-footer-right">
+        <button class="btn btn-ghost btn-sm" onclick="TaskModal.close()">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="TaskModal.save()">Save Task</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- ================================================================
+     JAVASCRIPT
+     ================================================================ -->
+<script>
+'use strict';
+
+// ================================================================
+// CONSTANTS & DEFAULT CONFIG
+// ================================================================
+const APP_VERSION = '1.0';
+const STORAGE_KEY = 'labwip_data';
+
+/** Default settings / seed data */
+const DEFAULT_SETTINGS = {
+  theme: 'dark',
+  autosaveIntervalMinutes: 5,   // configurable in Settings
+  labs:       ['RMP', 'RAL', 'RnL'],
+  persons:    ['Anna S.', 'Erik L.', 'Maria H.', 'Johan K.', 'Petra N.'],
+  priorities: ['Critical', 'High', 'Medium', 'Low'],
+  statuses:   ['Not Started', 'Active', 'On Hold', 'Blocked', 'Completed'],
+  tags:       ['calibration', 'measurement', 'accreditation', 'maintenance', 'ISO-17025', 'urgent'],
+};
+
+/** Color map for priorities */
+const PRIORITY_COLORS = {
+  'critical': '#da3633',
+  'high':     '#e3622b',
+  'medium':   '#d29922',
+  'low':      '#2ea043',
+};
+
+/** Color map for statuses */
+const STATUS_COLORS = {
+  'active':       '#2ea043',
+  'not started':  '#6e7681',
+  'on hold':      '#8957e5',
+  'blocked':      '#da3633',
+  'completed':    '#3d444d',
+};
+
+function getPriorityColor(p) {
+  return PRIORITY_COLORS[(p||'').toLowerCase()] || '#6e7681';
+}
+function getStatusColor(s) {
+  return STATUS_COLORS[(s||'').toLowerCase()] || '#6e7681';
+}
+function priorityBadgeClass(p) {
+  const map = { 'critical':'badge-critical','high':'badge-high','medium':'badge-medium','low':'badge-low' };
+  return 'badge ' + (map[(p||'').toLowerCase()] || 'badge-low');
+}
+function statusBadgeClass(s) {
+  const map = {
+    'active':'badge-active','not started':'badge-not-started','on hold':'badge-on-hold',
+    'blocked':'badge-blocked','completed':'badge-completed','pending':'badge-pending'
+  };
+  return 'badge ' + (map[(s||'').toLowerCase()] || 'badge-not-started');
+}
+
+// ================================================================
+// WORK CALENDAR UTILITIES
+// ================================================================
+const WorkCalendar = {
+  /** Is a Date a workday (Mon–Fri)? */
+  isWorkday(d) { return d.getDay() !== 0 && d.getDay() !== 6; },
+
+  /** Add N calendar days (Date arithmetic) */
+  addDays(date, n) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + n);
+    return d;
+  },
+
+  /** Calculate end date given start, workdays, allocation % */
+  calcEndDate(startStr, workdays, allocPct) {
+    if (!startStr || !workdays || workdays <= 0 || !allocPct || allocPct <= 0) return null;
+    const calendarDays = Math.ceil(workdays / (allocPct / 100));
+    let d = new Date(startStr + 'T00:00:00');
+    let remaining = calendarDays;
+    while (remaining > 0) {
+      d = this.addDays(d, 1);
+      if (this.isWorkday(d)) remaining--;
+    }
+    return d;
+  },
+
+  /** Format date as YYYY-MM-DD */
+  fmt(d) {
+    if (!d) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${dd}`;
+  },
+
+  /** Parse YYYY-MM-DD to Date */
+  parse(str) {
+    if (!str) return null;
+    const d = new Date(str + 'T00:00:00');
+    return isNaN(d) ? null : d;
+  },
+
+  /** Today as YYYY-MM-DD */
+  today() { return this.fmt(new Date()); },
+
+  /** Days between two dates */
+  daysBetween(a, b) {
+    if (!a || !b) return null;
+    return Math.round((b - a) / (1000*60*60*24));
+  }
+};
+
+// ================================================================
+// APP STATE
+// ================================================================
+const AppState = {
+  tasks: [],
+  settings: Object.assign({}, DEFAULT_SETTINGS),
+
+  /** Generate a unique task ID */
+  newId() {
+    return 'task_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  },
+
+  /** Add or update a task. Returns the saved task. */
+  saveTask(data) {
+    const now = new Date().toISOString();
+    const idx = data.id ? this.tasks.findIndex(t => t.id === data.id) : -1;
+    if (idx >= 0) {
+      this.tasks[idx] = Object.assign(this.tasks[idx], data, { modified: now });
+      return this.tasks[idx];
+    } else {
+      const task = Object.assign({ id: this.newId(), created: now, modified: now }, data);
+      this.tasks.push(task);
+      return task;
+    }
+  },
+
+  deleteTask(id) {
+    this.tasks = this.tasks.filter(t => t.id !== id);
+  },
+
+  getTask(id) { return this.tasks.find(t => t.id === id); },
+
+  /** Sorted/filtered tasks for table */
+  getFilteredTasks(filters, sortCol, sortDir) {
+    let list = [...this.tasks];
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      list = list.filter(t =>
+        (t.name||'').toLowerCase().includes(q) ||
+        (t.description||'').toLowerCase().includes(q) ||
+        (t.notes||'').toLowerCase().includes(q) ||
+        (t.tags||'').toLowerCase().includes(q)
+      );
+    }
+    if (filters.lab)      list = list.filter(t => t.lab === filters.lab);
+    if (filters.person)   list = list.filter(t => t.person === filters.person);
+    if (filters.status)   list = list.filter(t => t.status === filters.status);
+    if (filters.priority) list = list.filter(t => t.priority === filters.priority);
+
+    if (sortCol) {
+      list.sort((a, b) => {
+        let av = a[sortCol] ?? '', bv = b[sortCol] ?? '';
+        if (typeof av === 'number' && typeof bv === 'number') {
+          return sortDir === 'asc' ? av - bv : bv - av;
+        }
+        av = String(av).toLowerCase(); bv = String(bv).toLowerCase();
+        return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+      });
+    }
+    return list;
+  },
+
+  toJSON() {
+    return { version: APP_VERSION, settings: this.settings, tasks: this.tasks };
+  },
+
+  fromJSON(obj) {
+    if (!obj || !obj.version) throw new Error('Invalid file format');
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, obj.settings || {});
+    this.tasks    = obj.tasks || [];
+  }
+};
+
+// ================================================================
+// STORAGE — localStorage + embedded HTML data + auto-export .labwip
+// ================================================================
+const Storage = {
+  _dirty: true,
+  // Fixed filename so each save silently replaces the previous one in the
+  // browser's download folder — user should keep it next to index.html.
+  AUTOSAVE_FILENAME: 'labwip-autosave.labwip',
+
+  /**
+   * Save to BOTH localStorage AND the embedded <script> tag inside this HTML
+   * file. The embedded tag makes the file self-contained: if you copy/move
+   * index.html the data is already inside it. Also triggers a silent
+   * auto-export .labwip download so a portable backup is always current.
+   */
+  save() {
+    const json = JSON.stringify(AppState.toJSON(), null, 2);
+    // 1. localStorage (fast, same-origin)
+    try {
+      localStorage.setItem(STORAGE_KEY, json);
+    } catch(e) {
+      console.warn('localStorage save failed:', e);
+    }
+    // 2. Rewrite the embedded <script> tag so data travels with the file
+    try {
+      const tag = document.getElementById('labwip-embedded-data');
+      if (tag) tag.textContent = json;
+    } catch(e) {
+      console.warn('Embedded data write failed:', e);
+    }
+    this._dirty = false;
+    this._setIndicator(true);
+    // 3. Silent auto-export — always overwrites labwip-autosave.labwip
+    this._silentExport(json);
+  },
+
+  /**
+   * Load on startup. Priority order:
+   *   1. Embedded data in this HTML file (most recent if file was saved here)
+   *   2. localStorage (most recent if opened from same path before)
+   *   Whichever has the newer `modified` timestamp wins.
+   */
+  load() {
+    let embeddedData = null;
+    let localData    = null;
+
+    // Try embedded tag
+    try {
+      const tag = document.getElementById('labwip-embedded-data');
+      if (tag && tag.textContent.trim()) {
+        embeddedData = JSON.parse(tag.textContent.trim());
+      }
+    } catch(e) {
+      console.warn('Embedded data parse failed:', e);
+    }
+
+    // Try localStorage
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) localData = JSON.parse(raw);
+    } catch(e) {
+      console.warn('localStorage load failed:', e);
+    }
+
+    // Pick the newer source by comparing task count + newest modified timestamp
+    const score = (d) => {
+      if (!d || !d.tasks) return 0;
+      const latest = d.tasks.reduce((m, t) => Math.max(m, new Date(t.modified||0).getTime()), 0);
+      return latest;
+    };
+
+    const winner = score(embeddedData) >= score(localData) ? embeddedData : localData;
+
+    if (winner) {
+      try {
+        AppState.fromJSON(winner);
+        return true;
+      } catch(e) {
+        console.warn('Data load failed:', e);
+      }
+    }
+    return false;
+  },
+
+  /**
+   * Silent auto-export: creates a download of labwip-autosave.labwip.
+   * Throttled to at most once per save call, but we skip it silently if the
+   * tab has no user interaction yet (browsers block downloads without it).
+   */
+  _silentExport(json) {
+    try {
+      const blob = new Blob([json], {type:'application/json'});
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = this.AUTOSAVE_FILENAME;
+      // Must be in DOM for Firefox
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch(e) {
+      // Silent — download blocked by browser policy is non-fatal
+      console.warn('Auto-export skipped:', e);
+    }
+  },
+
+  _setIndicator(saved) {
+    const dot  = document.getElementById('autosave-dot');
+    const text = document.getElementById('autosave-text');
+    if (!dot) return;
+    if (saved) {
+      dot.className = 'saved';
+      const mins = AppState.settings.autosaveIntervalMinutes ?? 5;
+      text.textContent = 'Saved ' + new Date().toLocaleTimeString('sv-SE', {hour:'2-digit',minute:'2-digit'})
+        + (mins === 0 ? ' · timer off' : ' · ' + mins + 'min');
+    } else {
+      dot.className = '';
+      text.textContent = 'Unsaved';
+    }
+  },
+
+  markDirty() {
+    this._dirty = true;
+    this._setIndicator(false);
+    // Save-on-change: debounced 400ms so rapid edits (e.g. slider drag) coalesce
+    clearTimeout(this._changeTimer);
+    this._changeTimer = setTimeout(() => this.save(), 400);
+  },
+
+  /** Called by the manual Save button in the topbar */
+  manualSave() {
+    clearTimeout(this._changeTimer); // cancel any pending debounce
+    this.save();
+    Toast.show('Saved', 'success');
+  },
+
+  /** Manual export — prompts a named download (user chooses location) */
+  exportFile() {
+    const json   = JSON.stringify(AppState.toJSON(), null, 2);
+    const blob   = new Blob([json], {type:'application/json'});
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0,10);
+    a.href       = url;
+    a.download   = `labwip-${dateStr}.labwip`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    Toast.show('Project exported', 'success');
+  },
+
+  /** Export CSV */
+  exportCSV() {
+    const cols = ['id','name','lab','person','status','priority','startDate','endDate','workdays','alloc','progress','tags','notes','created','modified'];
+    const header = cols.join(',');
+    const rows = AppState.tasks.map(t =>
+      cols.map(c => {
+        const v = t[c] !== undefined ? String(t[c]) : '';
+        return v.includes(',') || v.includes('"') ? '"' + v.replace(/"/g,'""') + '"' : v;
+      }).join(',')
+    );
+    const csv  = [header, ...rows].join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `labwip-export-${new Date().toISOString().slice(0,10)}.csv`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    Toast.show('CSV exported', 'success');
+  },
+
+  triggerImport() {
+    document.getElementById('import-file-input').click();
+  },
+
+  handleImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const obj = JSON.parse(e.target.result);
+        AppState.fromJSON(obj);
+        Storage.save();
+        App.refresh();
+        Toast.show('Project imported: ' + AppState.tasks.length + ' tasks', 'success');
+      } catch(err) {
+        Toast.show('Import failed: ' + err.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }
+};
+
+// ================================================================
+// TOAST NOTIFICATIONS
+// ================================================================
+const Toast = {
+  show(msg, type='info', duration=3000) {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+    t.className = `toast toast-${type}`;
+    t.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+    c.appendChild(t);
+    setTimeout(() => {
+      t.style.opacity = '0';
+      t.style.transform = 'translateX(20px)';
+      t.style.transition = 'opacity 0.3s, transform 0.3s';
+      setTimeout(() => c.removeChild(t), 300);
+    }, duration);
+  }
+};
+
+// ================================================================
+// APP CONTROLLER
+// ================================================================
+const App = {
+  currentView: 'dashboard',
+
+  init() {
+    // Load saved data or seed defaults
+    const loaded = Storage.load();
+    if (!loaded) {
+      this._seedDemoData();
+    }
+    // Apply theme
+    document.documentElement.setAttribute('data-theme', AppState.settings.theme || 'dark');
+
+    // Initial render
+    this.refresh();
+    this.switchView('dashboard');
+    Dashboard.initResizeObserver();
+
+    // Autosave interval — driven by settings
+    this.restartAutosave();
+
+    // Update topbar subtitle with current date
+    const sub = document.getElementById('topbar-subtitle');
+    if (sub) sub.textContent = new Date().toLocaleDateString('sv-SE', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  },
+
+  switchView(view) {
+    this.currentView = view;
+
+    // Update sidebar nav items
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.view === view);
+    });
+
+    // Show/hide panels
+    document.querySelectorAll('.view-panel').forEach(el => {
+      el.classList.remove('active');
+    });
+    const panel = document.getElementById('view-' + view);
+    if (panel) panel.classList.add('active');
+
+    // Update topbar
+    const titles = { dashboard:'Dashboard', table:'Task Table', gantt:'Gantt Timeline', settings:'Settings' };
+    document.getElementById('topbar-title').textContent = titles[view] || view;
+
+    // Render view
+    if (view === 'dashboard') Dashboard.render();
+    if (view === 'table')     { TableView.populateFilters(); TableView.render(); }
+    if (view === 'gantt')     { GanttFilters.populate(); requestAnimationFrame(() => Gantt.render()); }
+    if (view === 'settings')  Settings.render();
+  },
+
+  /** (Re)start the periodic autosave timer using current settings value */
+  restartAutosave() {
+    clearInterval(this._autosaveTimer);
+    const minutes = AppState.settings.autosaveIntervalMinutes;
+    if (minutes && minutes > 0) {
+      this._autosaveTimer = setInterval(() => Storage.save(), minutes * 60 * 1000);
+    }
+    // minutes === 0 means periodic autosave is disabled; save-on-change still works
+  },
+
+  refresh() {
+    // Update badge
+    const badge = document.getElementById('nav-badge-table');
+    if (badge) badge.textContent = AppState.tasks.filter(t => (t.status||'').toLowerCase() !== 'completed').length;
+
+    // Refresh current view
+    const v = this.currentView;
+    if (v === 'dashboard') Dashboard.render();
+    if (v === 'table')     TableView.render();
+    if (v === 'gantt')     Gantt.render();
+    if (v === 'settings')  Settings.render();
+
+    Storage.markDirty();
+  },
+
+  _seedDemoData() {
+    const today = new Date();
+    const offset = (d) => {
+      const x = new Date(today);
+      x.setDate(x.getDate() + d);
+      return WorkCalendar.fmt(x);
+    };
+
+    const seed = [
+      { name: 'Annual HPGe detector efficiency calibration', lab:'RMP', person:'Anna S.',    priority:'Critical', status:'Active',      startDate: offset(-10), workdays:5,  alloc:100, progress:60, tags:'calibration,HPGe',        notes:'Cs-137 reference source' },
+      { name: 'ISO/IEC 17025 internal audit preparation',   lab:'RAL', person:'Erik L.',    priority:'High',     status:'Active',      startDate: offset(-5),  workdays:8,  alloc:50,  progress:30, tags:'accreditation,ISO-17025', notes:'Audit scheduled for next month' },
+      { name: 'Radon measurement round-robin exercise',     lab:'RnL', person:'Maria H.',   priority:'High',     status:'Active',      startDate: offset(-3),  workdays:10, alloc:80,  progress:15, tags:'radon,measurement',       notes:'Nordic cooperation' },
+      { name: 'Gamma spectrometry method validation',       lab:'RAL', person:'Johan K.',   priority:'Medium',   status:'Active',      startDate: offset(-15), workdays:15, alloc:60,  progress:70, tags:'gamma,validation',        notes:'New nuclide list' },
+      { name: 'LSC instrument service and QA check',        lab:'RAL', person:'Petra N.',   priority:'Medium',   status:'On Hold',     startDate: offset(5),   workdays:3,  alloc:100, progress:0,  tags:'LSC,maintenance',         notes:'Waiting for service engineer' },
+      { name: 'ICP-MS calibration standard preparation',   lab:'RAL', person:'Anna S.',    priority:'Medium',   status:'Not Started', startDate: offset(10),  workdays:4,  alloc:50,  progress:0,  tags:'ICP-MS,calibration',      notes:'' },
+      { name: 'Dose rate meter reference irradiation',     lab:'RMP', person:'Johan K.',   priority:'High',     status:'Active',      startDate: offset(-8),  workdays:2,  alloc:100, progress:80, tags:'dosimetry,calibration',   notes:'PTB transfer standard' },
+      { name: 'Environmental sample tritium analysis',     lab:'RAL', person:'Maria H.',   priority:'Low',      status:'Active',      startDate: offset(-20), workdays:20, alloc:30,  progress:45, tags:'tritium,LSC,environment', notes:'Quarterly monitoring batch' },
+      { name: 'Radon in water method development',         lab:'RnL', person:'Erik L.',    priority:'Medium',   status:'Active',      startDate: offset(-6),  workdays:12, alloc:50,  progress:20, tags:'radon,method,development', notes:'New regulation requirement' },
+      { name: 'Personnel dosimeter reader calibration',   lab:'RMP', person:'Petra N.',   priority:'High',     status:'Not Started', startDate: offset(3),   workdays:2,  alloc:100, progress:0,  tags:'dosimetry,calibration',   notes:'Annual requirement' },
+      { name: 'Alpha spectrometry source preparation',    lab:'RAL', person:'Anna S.',    priority:'Low',      status:'Completed',   startDate: offset(-30), workdays:3,  alloc:100, progress:100,tags:'alpha,preparation',        notes:'Completed ahead of schedule' },
+      { name: 'Uncertainty budget review — gamma methods',lab:'RAL', person:'Erik L.',    priority:'Medium',   status:'Active',      startDate: offset(-12), workdays:6,  alloc:40,  progress:50, tags:'uncertainty,accreditation', notes:'ISO GUM update' },
+      { name: 'Radon chamber leak test',                  lab:'RnL', person:'Johan K.',   priority:'Critical', status:'Blocked',     startDate: offset(-2),  workdays:1,  alloc:100, progress:0,  tags:'radon,maintenance',         notes:'Waiting for spare parts' },
+      { name: 'Reference material procurement — U-238',  lab:'RMP', person:'Maria H.',   priority:'Low',      status:'Not Started', startDate: offset(14),  workdays:2,  alloc:50,  progress:0,  tags:'procurement,reference',     notes:'IAEA material requested' },
+      { name: 'QMS document revision cycle Q3',          lab:'RAL', person:'Petra N.',   priority:'Medium',   status:'Active',      startDate: offset(-7),  workdays:10, alloc:30,  progress:35, tags:'QMS,documentation',         notes:'15 documents in scope' },
+    ];
+
+    // Calculate end dates
+    seed.forEach(t => {
+      if (t.startDate && t.workdays && t.alloc) {
+        const end = WorkCalendar.calcEndDate(t.startDate, t.workdays, t.alloc);
+        t.endDate = WorkCalendar.fmt(end);
+      }
+      AppState.saveTask(t);
+    });
+
+    AppState.settings = Object.assign({}, DEFAULT_SETTINGS);
+    Storage.save();
+  }
+};
+
+// ================================================================
+// TASK MODAL
+// ================================================================
+const TaskModal = {
+  _editId: null,
+
+  open(taskId) {
+    this._editId = taskId || null;
+    const task = taskId ? AppState.getTask(taskId) : null;
+
+    // Populate dropdowns
+    this._populateSelect('f-lab',      AppState.settings.labs,       task?.lab);
+    this._populateSelect('f-person',   AppState.settings.persons,    task?.person);
+    this._populateSelect('f-priority', AppState.settings.priorities, task?.priority);
+    this._populateSelect('f-status',   AppState.settings.statuses,   task?.status || 'Not Started');
+
+    // Title
+    document.getElementById('modal-title').textContent = task ? 'Edit Task' : 'New Task';
+    document.getElementById('modal-delete-btn').style.display = task ? 'inline-flex' : 'none';
+
+    // Populate fields
+    const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
+    set('f-name',        task?.name);
+    set('f-start',       task?.startDate);
+    set('f-workdays',    task?.workdays);
+    set('f-alloc',       task?.alloc ?? 100);
+    set('f-tags',        task?.tags);
+    set('f-notes',       task?.notes);
+    set('f-description', task?.description);
+    set('f-enddate',     task?.endDate || '');
+
+    const prog = task?.progress ?? 0;
+    document.getElementById('f-progress-range').value = prog;
+    document.getElementById('f-progress').value       = prog;
+    document.getElementById('f-progress-val').textContent = prog + '%';
+
+    // Show
+    document.getElementById('modal-overlay').classList.add('open');
+    document.getElementById('f-name').focus();
+  },
+
+  close() {
+    document.getElementById('modal-overlay').classList.remove('open');
+    this._editId = null;
+  },
+
+  save() {
+    const name     = document.getElementById('f-name').value.trim();
+    const lab      = document.getElementById('f-lab').value;
+    const person   = document.getElementById('f-person').value;
+    const priority = document.getElementById('f-priority').value;
+    if (!name || !lab || !person || !priority) {
+      Toast.show('Please fill in all required fields', 'error');
+      return;
+    }
+
+    const startDate = document.getElementById('f-start').value;
+    const workdays  = parseFloat(document.getElementById('f-workdays').value) || 0;
+    const alloc     = parseFloat(document.getElementById('f-alloc').value)    || 100;
+
+    // Recalculate end date
+    let endDate = '';
+    if (startDate && workdays > 0 && alloc > 0) {
+      const end = WorkCalendar.calcEndDate(startDate, workdays, alloc);
+      endDate = WorkCalendar.fmt(end);
+    }
+
+    const data = {
+      id:          this._editId,
+      name,
+      lab,
+      person,
+      priority,
+      status:      document.getElementById('f-status').value,
+      startDate,
+      workdays,
+      alloc,
+      endDate,
+      progress:    parseInt(document.getElementById('f-progress').value) || 0,
+      description: document.getElementById('f-description').value.trim(),
+      tags:        document.getElementById('f-tags').value.trim(),
+      notes:       document.getElementById('f-notes').value.trim(),
+    };
+
+    AppState.saveTask(data);
+    this.close();
+    App.refresh();
+    Toast.show(this._editId ? 'Task updated' : 'Task created', 'success');
+  },
+
+  deleteTask() {
+    if (!this._editId) return;
+    if (!confirm('Delete this task? This cannot be undone.')) return;
+    AppState.deleteTask(this._editId);
+    this.close();
+    App.refresh();
+    Toast.show('Task deleted', 'info');
+  },
+
+  calcEndDate() {
+    const start    = document.getElementById('f-start').value;
+    const workdays = parseFloat(document.getElementById('f-workdays').value) || 0;
+    const alloc    = parseFloat(document.getElementById('f-alloc').value)    || 100;
+    const end      = WorkCalendar.calcEndDate(start, workdays, alloc);
+    document.getElementById('f-enddate').value = end ? WorkCalendar.fmt(end) : '';
+  },
+
+  _populateSelect(id, items, selected) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = items.map(v =>
+      `<option value="${v}" ${v === selected ? 'selected' : ''}>${v}</option>`
+    ).join('');
+  }
+};
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') TaskModal.close();
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    Storage.manualSave();
+  }
+});
+
+// ================================================================
+// DASHBOARD
+// ================================================================
+const Dashboard = {
+  render() {
+    const tasks = AppState.tasks;
+    const today = WorkCalendar.today();
+    const now   = new Date();
+
+    // Defer chart drawing if containers aren't laid out yet
+    const panel = document.getElementById('view-dashboard');
+    if (!panel || !panel.classList.contains('active')) return;
+
+    const total    = tasks.length;
+    const active   = tasks.filter(t => (t.status||'').toLowerCase() === 'active').length;
+    const overdue  = tasks.filter(t => t.endDate && t.endDate < today && (t.status||'').toLowerCase() !== 'completed').length;
+    const completed= tasks.filter(t => (t.status||'').toLowerCase() === 'completed').length;
+    const blocked  = tasks.filter(t => (t.status||'').toLowerCase() === 'blocked').length;
+
+    // KPI grid
+    const kpiGrid = document.getElementById('kpi-grid');
+    kpiGrid.innerHTML = [
+      { label:'Total Tasks',   val:total,     sub:'in system',           color:'var(--accent)' },
+      { label:'Active',        val:active,    sub:'in progress',          color:'var(--green)' },
+      { label:'Overdue',       val:overdue,   sub:'past deadline',        color:overdue>0?'var(--red)':'var(--green)' },
+      { label:'Completed',     val:completed, sub:'done',                  color:'var(--text-3)' },
+      { label:'Blocked',       val:blocked,   sub:'need attention',        color:blocked>0?'var(--orange)':'var(--text-3)' },
+    ].map(k => `
+      <div class="kpi-card">
+        <div class="kpi-accent" style="background:${k.color}"></div>
+        <div class="kpi-label">${k.label}</div>
+        <div class="kpi-value">${k.val}</div>
+        <div class="kpi-sub">${k.sub}</div>
+      </div>
+    `).join('');
+
+    // Charts — draw after a rAF so the DOM has fully laid out
+    this._chartData = {
+      status:   this._countBy(tasks, 'status'),
+      priority: this._countBy(tasks, 'priority'),
+      lab:      this._countBy(tasks, 'lab'),
+    };
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        this._redrawCharts();
+      });
+    });
+
+    // Staff workload
+    const staffEl = document.getElementById('staff-workload');
+    const personCounts = {};
+    tasks.filter(t => (t.status||'').toLowerCase() === 'active')
+         .forEach(t => { personCounts[t.person] = (personCounts[t.person]||0)+1; });
+    const maxCount = Math.max(...Object.values(personCounts), 1);
+    staffEl.innerHTML = Object.entries(personCounts)
+      .sort((a,b) => b[1]-a[1])
+      .map(([name, count]) => `
+        <div class="workload-row">
+          <div class="workload-name">${name}</div>
+          <div class="workload-bar-bg">
+            <div class="workload-bar-fill" style="width:${Math.round(count/maxCount*100)}%;background:var(--accent)"></div>
+          </div>
+          <div class="workload-pct">${count} task${count!==1?'s':''}</div>
+        </div>
+      `).join('') || '<div class="text-muted text-sm" style="padding:12px 0">No active tasks</div>';
+
+    // Near deadlines (14 days)
+    const deadlineEl = document.getElementById('near-deadlines');
+    const cutoff = new Date(now);
+    cutoff.setDate(cutoff.getDate() + 14);
+    const cutoffStr = WorkCalendar.fmt(cutoff);
+
+    const upcoming = tasks
+      .filter(t => t.endDate && t.endDate >= today && t.endDate <= cutoffStr && (t.status||'').toLowerCase() !== 'completed')
+      .sort((a,b) => a.endDate.localeCompare(b.endDate))
+      .slice(0, 8);
+
+    deadlineEl.innerHTML = upcoming.map(t => {
+      const days = WorkCalendar.daysBetween(now, WorkCalendar.parse(t.endDate));
+      const color = days <= 2 ? 'var(--red)' : days <= 5 ? 'var(--orange)' : 'var(--text-2)';
+      return `
+        <div class="deadline-item" style="cursor:pointer" onclick="TaskModal.open('${t.id}')">
+          <span class="dot" style="background:${getPriorityColor(t.priority)}"></span>
+          <span class="deadline-name">${t.name}</span>
+          <span class="deadline-date" style="color:${color}">${t.endDate} (${days}d)</span>
+        </div>
+      `;
+    }).join('') || '<div class="text-muted text-sm" style="padding:12px 0">No upcoming deadlines</div>';
+  },
+
+  _redrawCharts() {
+    if (!this._chartData) return;
+    this._drawBarChart('chart-status',   this._chartData.status,   s => getStatusColor(s));
+    this._drawBarChart('chart-priority', this._chartData.priority, p => getPriorityColor(p));
+    this._drawBarChart('chart-lab',      this._chartData.lab,      () => 'var(--accent)');
+  },
+
+  initResizeObserver() {
+    if (this._resizeObserver) return;
+    const panel = document.getElementById('view-dashboard');
+    if (!panel || !window.ResizeObserver) return;
+    this._resizeObserver = new ResizeObserver(() => {
+      if (App.currentView === 'dashboard') {
+        this._redrawCharts();
+      }
+    });
+    this._resizeObserver.observe(panel);
+  },
+
+  _countBy(tasks, field) {
+    const counts = {};
+    tasks.forEach(t => { const v = t[field]||'Unknown'; counts[v] = (counts[v]||0)+1; });
+    return counts;
+  },
+
+  _drawBarChart(canvasId, counts, colorFn) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const container = canvas.parentElement;
+    // Use offsetWidth/offsetHeight which reflect actual rendered size
+    const W = container.offsetWidth  || 280;
+    const H = container.offsetHeight || 190;
+    if (W < 10 || H < 10) return; // Not laid out yet — ResizeObserver will retry
+    canvas.width  = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // Get CSS variable values
+    const style   = getComputedStyle(document.documentElement);
+    const textCol = style.getPropertyValue('--text-2').trim()   || '#8b949e';
+    const bgCol   = style.getPropertyValue('--bg-3').trim()     || '#21262d';
+    const borderC = style.getPropertyValue('--border').trim()   || '#30363d';
+
+    const entries = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+    if (!entries.length) { ctx.fillStyle = textCol; ctx.font = '12px IBM Plex Mono,monospace'; ctx.fillText('No data', 10, 20); return; }
+
+    const maxVal = Math.max(...entries.map(e=>e[1]), 1);
+    const pad    = { top:10, right:16, bottom:42, left:32 };
+    const chartW = W - pad.left - pad.right;
+    const chartH = H - pad.top  - pad.bottom;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Horizontal grid lines
+    ctx.strokeStyle = borderC;
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.top + chartH - (i/4)*chartH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W-pad.right, y); ctx.stroke();
+      ctx.fillStyle = textCol; ctx.font = '9px IBM Plex Mono,monospace'; ctx.textAlign='right';
+      ctx.fillText(Math.round(maxVal*(i/4)), pad.left-4, y+3);
+    }
+
+    const barW   = Math.min(40, (chartW / entries.length) * 0.65);
+    const slotW  = chartW / entries.length;
+
+    entries.forEach(([label, val], i) => {
+      const x    = pad.left + i*slotW + (slotW-barW)/2;
+      const barH = (val / maxVal) * chartH;
+      const y    = pad.top + chartH - barH;
+
+      // Resolve color (handles CSS var)
+      let color = colorFn(label);
+      if (color.startsWith('var(')) {
+        color = style.getPropertyValue(color.slice(4,-1)).trim() || '#388bfd';
+      }
+
+      // Bar
+      ctx.fillStyle = color;
+      const r = Math.min(3, barW/2);
+      ctx.beginPath();
+      ctx.moveTo(x+r, y);
+      ctx.lineTo(x+barW-r, y);
+      ctx.quadraticCurveTo(x+barW, y, x+barW, y+r);
+      ctx.lineTo(x+barW, y+barH);
+      ctx.lineTo(x, y+barH);
+      ctx.lineTo(x, y+r);
+      ctx.quadraticCurveTo(x, y, x+r, y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Value label
+      ctx.fillStyle = textCol;
+      ctx.font = '10px IBM Plex Mono,monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(val, x+barW/2, y-4);
+
+      // X-axis label (truncate)
+      const maxLabelW = slotW - 4;
+      const shortLabel = label.length > 10 ? label.slice(0,8)+'…' : label;
+      ctx.font = '9px IBM Plex Mono,monospace';
+      ctx.fillStyle = textCol;
+      ctx.fillText(shortLabel, x+barW/2, H-pad.bottom+14);
+    });
+  }
+};
+
+// ================================================================
+// TABLE VIEW
+// ================================================================
+const TableView = {
+  sortCol: 'startDate',
+  sortDir: 'desc',
+  _filters: {},
+
+  populateFilters() {
+    const setOpts = (id, items) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const cur = el.value;
+      el.innerHTML = `<option value="">All</option>` +
+        items.map(v => `<option value="${v}" ${v===cur?'selected':''}>${v}</option>`).join('');
+    };
+    setOpts('filter-lab',      AppState.settings.labs);
+    setOpts('filter-person',   AppState.settings.persons);
+    setOpts('filter-status',   AppState.settings.statuses);
+    setOpts('filter-priority', AppState.settings.priorities);
+  },
+
+  applyFilters() {
+    this._filters = {
+      search:   (document.getElementById('table-search')||{}).value || '',
+      lab:      (document.getElementById('filter-lab')||{}).value || '',
+      person:   (document.getElementById('filter-person')||{}).value || '',
+      status:   (document.getElementById('filter-status')||{}).value || '',
+      priority: (document.getElementById('filter-priority')||{}).value || '',
+    };
+    this.render();
+  },
+
+  clearFilters() {
+    ['table-search','filter-lab','filter-person','filter-status','filter-priority'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    this._filters = {};
+    this.render();
+  },
+
+  sortBy(col) {
+    if (this.sortCol === col) {
+      this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortCol = col;
+      this.sortDir = 'asc';
+    }
+    // Update header classes
+    document.querySelectorAll('.data-table th').forEach(th => {
+      th.classList.remove('sorted-asc','sorted-desc');
+      if (th.dataset.col === col) th.classList.add('sorted-' + this.sortDir);
+    });
+    this.render();
+  },
+
+  render() {
+    const tasks = AppState.getFilteredTasks(this._filters||{}, this.sortCol, this.sortDir);
+    const today = WorkCalendar.today();
+    const tbody = document.getElementById('table-body');
+    if (!tbody) return;
+
+    if (!tasks.length) {
+      tbody.innerHTML = `<tr><td colspan="12" class="table-empty">No tasks found</td></tr>`;
+      document.getElementById('table-count').textContent = '0 tasks';
+      return;
+    }
+
+    tbody.innerHTML = tasks.map(t => {
+      const overdue = t.endDate && t.endDate < today && (t.status||'').toLowerCase() !== 'completed';
+      const tags = (t.tags||'').split(',').filter(Boolean).map(tag =>
+        `<span class="tag-chip">${tag.trim()}</span>`
+      ).join('');
+
+      const progPct = t.progress || 0;
+      const progBar = `
+        <div class="prog-bar">
+          <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${progPct}%"></div></div>
+          <span class="prog-pct">${progPct}%</span>
+        </div>`;
+
+      return `<tr class="${overdue?'overdue':''}" onclick="TaskModal.open('${t.id}')">
+        <td class="td-name">${escHtml(t.name||'')}</td>
+        <td>${escHtml(t.lab||'')}</td>
+        <td>${escHtml(t.person||'')}</td>
+        <td><span class="${statusBadgeClass(t.status)}">${escHtml(t.status||'')}</span></td>
+        <td><span class="${priorityBadgeClass(t.priority)}">${escHtml(t.priority||'')}</span></td>
+        <td class="td-mono">${t.startDate||'—'}</td>
+        <td class="td-mono" style="${overdue?'color:var(--red)':''}">
+          ${t.endDate||'—'}${overdue?' ⚠':''}
+        </td>
+        <td class="td-mono">${t.workdays||'—'}</td>
+        <td class="td-mono">${t.alloc!=null?t.alloc+'%':'—'}</td>
+        <td style="min-width:120px">${progBar}</td>
+        <td style="max-width:160px">${tags}</td>
+        <td onclick="event.stopPropagation();TaskModal.open('${t.id}')" style="color:var(--text-3);text-align:center">✎</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('table-count').textContent =
+      `${tasks.length} task${tasks.length!==1?'s':''} of ${AppState.tasks.length}`;
+
+    const sortInfo = document.getElementById('table-sort-info');
+    if (sortInfo && this.sortCol)
+      sortInfo.textContent = `Sorted by ${this.sortCol} (${this.sortDir})`;
+  }
+};
+
+// HTML escape utility
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ================================================================
+// GANTT VIEW
+// ================================================================
+const GanttFilters = {
+  populate() {
+    const setOpts = (id, items) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const cur = el.value;
+      el.innerHTML = `<option value="">All</option>` +
+        items.map(v => `<option value="${v}" ${v===cur?'selected':''}>${v}</option>`).join('');
+    };
+    setOpts('gantt-filter-lab',    AppState.settings.labs);
+    setOpts('gantt-filter-person', AppState.settings.persons);
+    setOpts('gantt-filter-status', AppState.settings.statuses);
+  }
+};
+
+const Gantt = {
+  zoom: 'week',       // 'day' | 'week' | 'month'
+  pixelsPerDay: 30,   // base; varies by zoom
+  scrollLeft: 0,
+  LEFT_WIDTH: 240,    // task list column width
+  ROW_HEIGHT: 36,
+  _tasks: [],
+  _startDate: null,
+  _totalDays: 0,
+  _animFrame: null,
+
+  ZOOM_PX: { day: 60, week: 30, month: 10 },
+
+  setZoom(z) {
+    this.zoom = z;
+    this.pixelsPerDay = this.ZOOM_PX[z];
+    document.querySelectorAll('.gantt-zoom-btn').forEach(b => b.classList.toggle('active', b.dataset.zoom === z));
+    this.render();
+  },
+
+  applyFilters() { this.render(); },
+
+  goToToday() {
+    // Scroll so today is visible in the chart area
+    if (!this._startDate) return;
+    const today = new Date();
+    const diff  = WorkCalendar.daysBetween(this._startDate, today);
+    const target = Math.max(0, diff * this.pixelsPerDay - 200);
+    this._scrollTo(target);
+    this.render();
+  },
+
+  _scrollTo(x) {
+    const area = document.getElementById('gantt-body-wrap');
+    if (area) area.scrollLeft = x;
+    this.scrollLeft = x;
+  },
+
+  _getFilteredTasks() {
+    let tasks = [...AppState.tasks];
+    const fLab    = (document.getElementById('gantt-filter-lab')||{}).value;
+    const fPerson = (document.getElementById('gantt-filter-person')||{}).value;
+    const fStatus = (document.getElementById('gantt-filter-status')||{}).value;
+    if (fLab)    tasks = tasks.filter(t => t.lab    === fLab);
+    if (fPerson) tasks = tasks.filter(t => t.person === fPerson);
+    if (fStatus) tasks = tasks.filter(t => t.status === fStatus);
+    return tasks.filter(t => t.startDate || t.endDate).sort((a,b) => (a.startDate||'').localeCompare(b.startDate||''));
+  },
+
+  render() {
+    const tasks = this._getFilteredTasks();
+    this._tasks = tasks;
+
+    const empty = document.getElementById('gantt-empty');
+    const canvas = document.getElementById('gantt-canvas');
+    const tlCanvas = document.getElementById('gantt-timeline-canvas');
+    if (!canvas || !tlCanvas) return;
+
+    if (!tasks.length) {
+      if (empty) empty.style.display = 'block';
+      canvas.style.display = 'none';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    canvas.style.display = 'block';
+
+    // Compute date range (start 14 days before earliest, end 14 after latest)
+    const dates = tasks.flatMap(t => [t.startDate, t.endDate].filter(Boolean)).sort();
+    const minDate = WorkCalendar.parse(dates[0]);
+    const maxDate = WorkCalendar.parse(dates[dates.length-1]);
+    minDate.setDate(minDate.getDate() - 14);
+    maxDate.setDate(maxDate.getDate() + 21);
+    this._startDate = minDate;
+    this._totalDays = WorkCalendar.daysBetween(minDate, maxDate) + 1;
+
+    const canvasW  = this._totalDays * this.pixelsPerDay;
+    const canvasH  = tasks.length * this.ROW_HEIGHT;
+
+    // Size left panel
+    const leftEl = document.getElementById('gantt-task-list');
+    leftEl.style.width = this.LEFT_WIDTH + 'px';
+    leftEl.style.minWidth = this.LEFT_WIDTH + 'px';
+
+    // Size left header
+    const leftHeader = document.getElementById('gantt-left-header');
+    if (leftHeader) {
+      leftHeader.style.width = this.LEFT_WIDTH + 'px';
+      leftHeader.style.minWidth = this.LEFT_WIDTH + 'px';
+    }
+
+    // Draw task list
+    this._renderTaskList(tasks, leftEl);
+
+    // The chart canvas must be exactly canvasW wide (the full timeline extent)
+    // The body-wrap provides the scrolling viewport
+    const chartArea = document.getElementById('gantt-chart-area');
+    chartArea.style.width  = canvasW + 'px';
+    chartArea.style.minWidth = canvasW + 'px';
+
+    canvas.width  = canvasW;
+    canvas.height = Math.max(canvasH, 200);
+    canvas.style.display = 'block';
+
+    // Timeline header canvas: same width as chart canvas
+    const tlW = canvasW;
+    tlCanvas.width  = tlW;
+    tlCanvas.height = 50;
+    // Position canvas absolutely within its scroll wrapper
+    tlCanvas.style.position = 'absolute';
+    tlCanvas.style.top = '0';
+    tlCanvas.style.left = '0';
+
+    this._drawTimeline(tlCanvas, tlW);
+    this._drawBars(canvas, tasks, canvasW);
+
+    // Sync body scroll → header timeline using canvas transform (header is overflow:hidden)
+    const bodyWrap = document.getElementById('gantt-body-wrap');
+    const tlCanvas2 = document.getElementById('gantt-timeline-canvas');
+    bodyWrap.onscroll = () => {
+      const sl = bodyWrap.scrollLeft;
+      if (tlCanvas2) tlCanvas2.style.transform = `translateX(-${sl}px)`;
+      this.scrollLeft = sl;
+    };
+    // Apply current scroll
+    {
+      const sl = bodyWrap.scrollLeft;
+      if (tlCanvas2) tlCanvas2.style.transform = `translateX(-${sl}px)`;
+    }
+  },
+
+  _renderTaskList(tasks, el) {
+    el.innerHTML = tasks.map(t => `
+      <div class="gantt-task-row" style="height:${this.ROW_HEIGHT}px" onclick="TaskModal.open('${t.id}')">
+        <span class="dot" style="background:${getPriorityColor(t.priority)}"></span>
+        <div style="overflow:hidden">
+          <div class="gantt-task-name" style="max-width:${this.LEFT_WIDTH-50}px">${escHtml(t.name||'')}</div>
+          <div class="gantt-task-sub">${escHtml(t.person||'')} · ${escHtml(t.lab||'')}</div>
+        </div>
+      </div>
+    `).join('');
+  },
+
+  _drawTimeline(canvas, W) {
+    const ctx = canvas.getContext('2d');
+    const style = getComputedStyle(document.documentElement);
+    const bg     = style.getPropertyValue('--bg-2').trim()     || '#161b22';
+    const border = style.getPropertyValue('--border').trim()   || '#30363d';
+    const text2  = style.getPropertyValue('--text-3').trim()   || '#6e7681';
+    const text1  = style.getPropertyValue('--text-2').trim()   || '#8b949e';
+
+    ctx.clearRect(0, 0, W, 50);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, 50);
+
+    const pd  = this.pixelsPerDay;
+    const sd  = this._startDate;
+    const tot = this._totalDays;
+
+    // Draw month labels (top row) and day/week markers (bottom row)
+    let curMonth = -1;
+    for (let i = 0; i < tot; i++) {
+      const d = new Date(sd);
+      d.setDate(sd.getDate() + i);
+      const x = i * pd;
+      const dow = d.getDay(); // 0=Sun
+
+      // Month separator
+      if (d.getMonth() !== curMonth) {
+        curMonth = d.getMonth();
+        ctx.fillStyle = text1;
+        ctx.font = 'bold 10px IBM Plex Mono,monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(d.toLocaleString('en-SE',{month:'short',year:'numeric'}), x+2, 14);
+        ctx.strokeStyle = border;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 50); ctx.stroke();
+      }
+
+      if (this.zoom === 'day') {
+        // Every day
+        ctx.strokeStyle = border;
+        ctx.lineWidth   = 0.5;
+        ctx.beginPath(); ctx.moveTo(x, 20); ctx.lineTo(x, 50); ctx.stroke();
+        ctx.fillStyle = dow===0||dow===6 ? text2 : text1;
+        ctx.font = '9px IBM Plex Mono,monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(d.getDate(), x + pd/2, 42);
+      } else if (this.zoom === 'week') {
+        // Week starts (Monday)
+        if (dow === 1) {
+          ctx.strokeStyle = border;
+          ctx.lineWidth   = 1;
+          ctx.beginPath(); ctx.moveTo(x, 20); ctx.lineTo(x, 50); ctx.stroke();
+          ctx.fillStyle = text1;
+          ctx.font = '9px IBM Plex Mono,monospace';
+          ctx.textAlign = 'left';
+          ctx.fillText('W'+this._weekNum(d)+' '+d.getDate()+'/'+String(d.getMonth()+1).padStart(2,'0'), x+3, 42);
+        }
+      } else {
+        // Month zoom: first of each 5-day block
+        if (d.getDate() === 1 || d.getDate() === 6 || d.getDate() === 11 ||
+            d.getDate() === 16 || d.getDate() === 21 || d.getDate() === 26) {
+          ctx.strokeStyle = border;
+          ctx.lineWidth   = 0.5;
+          ctx.beginPath(); ctx.moveTo(x, 20); ctx.lineTo(x, 50); ctx.stroke();
+          ctx.fillStyle = text1;
+          ctx.font = '9px IBM Plex Mono,monospace';
+          ctx.textAlign = 'left';
+          ctx.fillText(d.getDate(), x+2, 42);
+        }
+      }
+    }
+
+    // Today marker (timeline top)
+    const todayOff = WorkCalendar.daysBetween(sd, new Date());
+    if (todayOff >= 0 && todayOff < tot) {
+      const tx = todayOff * pd + pd/2;
+      ctx.strokeStyle = '#e3622b';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(tx, 18); ctx.lineTo(tx, 50); ctx.stroke();
+    }
+  },
+
+  _drawBars(canvas, tasks, canvasW) {
+    const ctx = canvas.getContext('2d');
+    const style = getComputedStyle(document.documentElement);
+    const bg3   = style.getPropertyValue('--bg-3').trim()   || '#21262d';
+    const bg4   = style.getPropertyValue('--bg-4').trim()   || '#30363d';
+    const border= style.getPropertyValue('--border').trim() || '#30363d';
+    const today = new Date();
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const pd  = this.pixelsPerDay;
+    const RH  = this.ROW_HEIGHT;
+    const sd  = this._startDate;
+    const W   = canvas.width;
+    const H   = canvas.height;
+
+    // Background stripes (alternating rows)
+    tasks.forEach((_, i) => {
+      ctx.fillStyle = i%2===0 ? 'rgba(255,255,255,0.01)' : 'transparent';
+      ctx.fillRect(0, i*RH, W, RH);
+    });
+
+    // Weekend shading
+    for (let i = 0; i < this._totalDays; i++) {
+      const d = new Date(sd);
+      d.setDate(sd.getDate() + i);
+      if (d.getDay()===0 || d.getDay()===6) {
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        ctx.fillRect(i*pd, 0, pd, H);
+      }
+    }
+
+    // Horizontal grid lines
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 0.5;
+    tasks.forEach((_, i) => {
+      ctx.beginPath();
+      ctx.moveTo(0, i*RH + RH);
+      ctx.lineTo(W, i*RH + RH);
+      ctx.stroke();
+    });
+
+    // Today line
+    const todayOff = WorkCalendar.daysBetween(sd, today);
+    if (todayOff >= 0 && todayOff < this._totalDays) {
+      const tx = todayOff * pd + pd/2;
+      ctx.strokeStyle = '#e3622b';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4,3]);
+      ctx.beginPath(); ctx.moveTo(tx, 0); ctx.lineTo(tx, H); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Bars
+    tasks.forEach((t, i) => {
+      if (!t.startDate && !t.endDate) return;
+      const startD = WorkCalendar.parse(t.startDate || t.endDate);
+      const endD   = WorkCalendar.parse(t.endDate   || t.startDate);
+      if (!startD || !endD) return;
+
+      const x1 = WorkCalendar.daysBetween(sd, startD) * pd;
+      const x2 = (WorkCalendar.daysBetween(sd, endD) + 1) * pd;
+      const barW = Math.max(x2 - x1, pd);
+      const barY = i * RH + RH * 0.22;
+      const barH = RH * 0.56;
+      const r    = 4;
+
+      // Bar background
+      const color = getPriorityColor(t.priority);
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.75;
+      this._roundRect(ctx, x1, barY, barW, barH, r);
+      ctx.fill();
+
+      // Progress fill
+      if (t.progress > 0) {
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 1;
+        this._roundRect(ctx, x1, barY, barW * (t.progress/100), barH, r);
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1;
+
+      // Label
+      ctx.fillStyle = '#fff';
+      ctx.font = '10px IBM Plex Sans,sans-serif';
+      ctx.textAlign = 'left';
+      const label = t.name || '';
+      const avail = barW - 8;
+      const chars = Math.floor(avail / 6.5);
+      const displayText = chars > 5 ? (label.length > chars ? label.slice(0,chars-1)+'…' : label) : '';
+      if (displayText) ctx.fillText(displayText, x1+6, barY + barH/2 + 4);
+    });
+
+    // Hover target data for tooltip
+    this._barRects = tasks.map((t, i) => {
+      const startD = WorkCalendar.parse(t.startDate || t.endDate);
+      const endD   = WorkCalendar.parse(t.endDate   || t.startDate);
+      if (!startD || !endD) return null;
+      const x1 = WorkCalendar.daysBetween(sd, startD) * pd;
+      const x2 = (WorkCalendar.daysBetween(sd, endD) + 1) * pd;
+      return { t, x1, x2, y1: i*RH, y2: (i+1)*RH };
+    });
+
+    // Mouse tooltip
+    this._bindTooltip(canvas);
+  },
+
+  _bindTooltip(canvas) {
+    if (canvas._tooltipBound) return;
+    canvas._tooltipBound = true;
+    const tooltip = document.getElementById('gantt-tooltip');
+
+    canvas.addEventListener('mousemove', (e) => {
+      const rect   = canvas.getBoundingClientRect();
+      const mx     = e.clientX - rect.left;
+      const my     = e.clientY - rect.top;
+      const rects  = this._barRects || [];
+
+      const hit = rects.find(r => r && mx >= r.x1 && mx <= r.x2 && my >= r.y1 && my <= r.y2);
+      if (hit) {
+        const t = hit.t;
+        tooltip.style.display = 'block';
+        tooltip.innerHTML = `
+          <div class="tt-title">${escHtml(t.name||'')}</div>
+          <div class="tt-row"><span class="tt-label">Lab</span><span>${escHtml(t.lab||'—')}</span></div>
+          <div class="tt-row"><span class="tt-label">Person</span><span>${escHtml(t.person||'—')}</span></div>
+          <div class="tt-row"><span class="tt-label">Status</span><span><span class="${statusBadgeClass(t.status)}">${escHtml(t.status||'')}</span></span></div>
+          <div class="tt-row"><span class="tt-label">Priority</span><span><span class="${priorityBadgeClass(t.priority)}">${escHtml(t.priority||'')}</span></span></div>
+          <div class="tt-row"><span class="tt-label">Start</span><span class="text-mono">${t.startDate||'—'}</span></div>
+          <div class="tt-row"><span class="tt-label">End</span><span class="text-mono">${t.endDate||'—'}</span></div>
+          <div class="tt-row"><span class="tt-label">Progress</span><span class="text-mono">${t.progress||0}%</span></div>
+          <div class="tt-row"><span class="tt-label">Alloc</span><span class="text-mono">${t.alloc||100}% · ${t.workdays||'?'} days</span></div>
+        `;
+        // Smart positioning: avoid clipping at viewport edges
+        const ttW = tooltip.offsetWidth  || 270;
+        const ttH = tooltip.offsetHeight || 200;
+        const vW  = window.innerWidth;
+        const vH  = window.innerHeight;
+        let left  = e.clientX + 14;
+        let top   = e.clientY - 10;
+        if (left + ttW > vW - 10)  left  = e.clientX - ttW - 14;
+        if (left < 6)              left  = 6;
+        if (top  + ttH > vH - 10)  top   = vH - ttH - 10;
+        if (top  < 6)              top   = 6;
+        tooltip.style.left = left + 'px';
+        tooltip.style.top  = top  + 'px';
+      } else {
+        tooltip.style.display = 'none';
+      }
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      tooltip.style.display = 'none';
+    });
+
+    canvas.addEventListener('click', (e) => {
+      const rect  = canvas.getBoundingClientRect();
+      const mx    = e.clientX - rect.left;
+      const my    = e.clientY - rect.top;
+      const rects = this._barRects || [];
+      const hit   = rects.find(r => r && mx >= r.x1 && mx <= r.x2 && my >= r.y1 && my <= r.y2);
+      if (hit) TaskModal.open(hit.t.id);
+    });
+  },
+
+  _roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.lineTo(x+w-r, y);
+    ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+    ctx.lineTo(x+w, y+h-r);
+    ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+    ctx.lineTo(x+r, y+h);
+    ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+    ctx.lineTo(x, y+r);
+    ctx.quadraticCurveTo(x, y, x+r, y);
+    ctx.closePath();
+  },
+
+  _weekNum(d) {
+    const jan1 = new Date(d.getFullYear(), 0, 1);
+    return Math.ceil((((d - jan1) / 86400000) + jan1.getDay() + 1) / 7);
+  }
+};
+
+// ================================================================
+// SETTINGS
+// ================================================================
+const Settings = {
+  render() {
+    const s = AppState.settings;
+    this._renderList('list-labs',       s.labs,       'labs');
+    this._renderList('list-persons',    s.persons,    'persons');
+    this._renderList('list-priorities', s.priorities, 'priorities');
+    this._renderList('list-statuses',   s.statuses,   'statuses');
+    this._renderList('list-tags',       s.tags,       'tags');
+
+    // Autosave interval
+    const mins = s.autosaveIntervalMinutes ?? 5;
+    const intervalInput   = document.getElementById('setting-autosave-interval');
+    const intervalDisplay = document.getElementById('setting-autosave-display');
+    if (intervalInput)   intervalInput.value       = mins;
+    if (intervalDisplay) intervalDisplay.textContent = mins === 0 ? 'disabled' : mins + ' min';
+
+    // Theme
+    document.getElementById('theme-dark').classList.toggle('active',  s.theme !== 'light');
+    document.getElementById('theme-light').classList.toggle('active', s.theme === 'light');
+  },
+
+  setAutosaveInterval(val) {
+    const mins = Math.max(0, Math.min(60, parseInt(val) || 0));
+    AppState.settings.autosaveIntervalMinutes = mins;
+    App.restartAutosave();
+    this.render();
+    Storage.save();
+    Toast.show(mins === 0 ? 'Periodic autosave disabled' : `Autosave interval set to ${mins} min`, 'success');
+  },
+
+  _renderList(containerId, items, key) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = (items||[]).map((item, i) => `
+      <div class="settings-list-item">
+        <span class="item-name">${escHtml(item)}</span>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="Settings.removeItem('${key}',${i})" title="Remove" style="color:var(--text-3);font-size:11px">✕</button>
+      </div>
+    `).join('');
+  },
+
+  addItem(key) {
+    const input = document.getElementById(`add-${key}-input`);
+    if (!input) return;
+    const val = input.value.trim();
+    if (!val) return;
+    if (!AppState.settings[key]) AppState.settings[key] = [];
+    if (AppState.settings[key].includes(val)) {
+      Toast.show(`"${val}" already exists`, 'error');
+      return;
+    }
+    AppState.settings[key].push(val);
+    input.value = '';
+    this.render();
+    Storage.save();
+    Toast.show(`Added "${val}"`, 'success');
+  },
+
+  removeItem(key, idx) {
+    AppState.settings[key].splice(idx, 1);
+    this.render();
+    Storage.save();
+  },
+
+  setTheme(theme) {
+    AppState.settings.theme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    this.render();
+    Storage.save();
+
+    // Redraw canvas-based charts if on dashboard
+    if (App.currentView === 'dashboard') Dashboard.render();
+    if (App.currentView === 'gantt')     Gantt.render();
+  },
+
+  clearAllData() {
+    if (!confirm('Are you sure you want to delete ALL tasks and reset settings? This cannot be undone.')) return;
+    AppState.tasks    = [];
+    AppState.settings = Object.assign({}, DEFAULT_SETTINGS);
+    localStorage.removeItem(STORAGE_KEY);
+    Storage.save();
+    App.refresh();
+    Toast.show('All data cleared', 'info');
+  }
+};
+
+// ================================================================
+// WINDOW RESIZE — re-render canvas-based views
+// ================================================================
+let _resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => {
+    if (App.currentView === 'dashboard') Dashboard._redrawCharts();
+    if (App.currentView === 'gantt')     Gantt.render();
+  }, 150);
+});
+
+// ================================================================
+// BOOT
+// ================================================================
+document.addEventListener('DOMContentLoaded', () => App.init());
+</script>
+</body>
+</html>

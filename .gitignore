@@ -1,0 +1,6 @@
+# Browser autosave artifacts (runtime data, not source)
+*.labwip
+
+# OS
+Thumbs.db
+.DS_Store
