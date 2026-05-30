@@ -178,3 +178,36 @@ If something other than a task card is dragged into a column (external
 text, file, etc.), `AppState.getTask(taskId)` returns `null` and the
 drop silently does nothing. A defensive check with a brief error toast
 would make the failure visible.
+
+---
+
+## 🎨 Assets
+
+### 14. Embed icon pack as favicon
+**Assets:** `IconPack/` — `WIPFlow.ico`, `WIPFlow_16x16.png` through `WIPFlow_256x256.png`
+
+Because the app is a single self-contained HTML file, icons **must be
+base64-embedded** — external `href` references break portability when the
+file is moved or copied without the `IconPack/` folder.
+
+**Implementation:**
+1. Base64-encode the relevant PNG sizes (16, 32, and optionally 180 for
+   Apple touch icon).
+2. Inject into `<head>` as data URIs:
+```html
+<link rel="icon" type="image/png" sizes="16x16"
+      href="data:image/png;base64,<16x16-base64>">
+<link rel="icon" type="image/png" sizes="32x32"
+      href="data:image/png;base64,<32x32-base64>">
+<link rel="apple-touch-icon" sizes="180x180"
+      href="data:image/png;base64,<128x128-base64>">
+```
+3. The `.ico` is not needed in the HTML (it is useful if the file is ever
+   served from a web server as `favicon.ico`, but browsers prefer the
+   explicit `<link>` tags above).
+4. The 64 px and larger PNGs can be added as `<link rel="icon"
+   sizes="64x64">` etc. if desired, but 16 and 32 are sufficient for
+   browser tabs and taskbar icons.
+
+**Note:** Base64 of `32x32.png` is typically ~2 KB; all three sizes
+together add under 10 KB to the file — negligible for a 200 KB app.
