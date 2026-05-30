@@ -864,6 +864,65 @@ textarea.form-control { resize: vertical; min-height: 70px; }
   .settings-grid { grid-template-columns: 1fr; }
 }
 
+/* ── DOC VIEWS (Help / About) ── */
+.doc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+  max-width: 1100px;
+}
+@media (max-width: 900px) { .doc-grid { grid-template-columns: 1fr; } }
+.doc-grid .card { grid-column: 1; }
+.doc-grid .card.full { grid-column: 1 / -1; }
+
+.doc-body {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text-2);
+}
+.doc-body p { margin: 0; }
+.doc-body strong { color: var(--text); font-weight: 500; }
+.doc-body code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--accent-2);
+}
+.doc-body pre {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  overflow-x: auto;
+  margin: 0;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.doc-body ul, .doc-body ol { padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.doc-body li { margin: 0; }
+.doc-kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; font-size: 13px; }
+.doc-kv dt { font-family: var(--mono); font-size: 12px; color: var(--accent-2); white-space: nowrap; padding-top: 2px; }
+.doc-kv dd { margin: 0; color: var(--text-2); }
+.doc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.doc-table th { text-align: left; font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); padding: 0 8px 6px 0; }
+.doc-table td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-2); }
+.doc-table tr:last-child td { border-bottom: none; }
+.doc-table td:first-child { font-family: var(--mono); font-size: 12px; color: var(--accent-2); white-space: nowrap; }
+.about-hero { display: flex; align-items: center; gap: 16px; padding: 16px 18px; }
+.about-hero img { width: 48px; height: 48px; border-radius: 10px; }
+.about-hero-name { font-size: 20px; font-weight: 600; letter-spacing: 0.01em; }
+.about-hero-sub { font-size: 12px; color: var(--text-3); font-family: var(--mono); margin-top: 2px; }
+
 .settings-list {
   display: flex;
   flex-direction: column;
@@ -1186,6 +1245,16 @@ tr.overdue td.td-name { color: var(--red); }
 
       <button class="nav-item" data-view="settings" onclick="App.switchView('settings')">
         <span class="nav-icon">⚙</span> Settings
+      </button>
+
+      <div class="divider" style="margin:10px 0"></div>
+      <div class="nav-section-label">Support</div>
+
+      <button class="nav-item" data-view="help" onclick="App.switchView('help')">
+        <span class="nav-icon">?</span> Help
+      </button>
+      <button class="nav-item" data-view="about" onclick="App.switchView('about')">
+        <span class="nav-icon">ℹ</span> About
       </button>
     </nav>
 
@@ -1558,6 +1627,264 @@ tr.overdue td.td-name { color: var(--red); }
 
         </div><!-- /settings-grid -->
       </div><!-- /view-settings -->
+
+      <!-- ── HELP ── -->
+      <div id="view-help" class="view-panel">
+        <div class="doc-grid">
+
+          <!-- Getting started -->
+          <div class="card full">
+            <div class="card-header"><span class="card-title">Getting Started</span></div>
+            <div class="doc-body">
+              <p>WIP Flow runs entirely in your browser — no install, no server, no internet required. Open <code>WIPflow.html</code> from any folder and your data loads automatically. The app ships with 15 demonstration tasks; clear them under <strong>Settings → Data Management → Clear All Data</strong> when you're ready to start fresh.</p>
+              <p>Data is saved automatically on every change (400 ms debounce) and periodically in the background. A green dot in the sidebar confirms the last successful save. Use <strong>↓ Save as HTML</strong> to produce a self-contained portable copy — see <em>Saving &amp; Portability</em> below.</p>
+            </div>
+          </div>
+
+          <!-- Creating & editing tasks -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">Creating &amp; Editing Tasks</span></div>
+            <div class="doc-body">
+              <p>Click <strong>+ New Task</strong> (topbar or sidebar) to open the task editor. Click any task row, Gantt bar, or Kanban card to edit an existing task.</p>
+              <dl class="doc-kv">
+                <dt>Task Name</dt><dd>Required. Free text.</dd>
+                <dt>Laboratory</dt><dd>Required. Dropdown managed in Settings.</dd>
+                <dt>Person</dt><dd>Required. Dropdown managed in Settings.</dd>
+                <dt>Priority</dt><dd>Dropdown: Critical → Low.</dd>
+                <dt>Status</dt><dd>Dropdown managed in Settings.</dd>
+                <dt>Start Date</dt><dd>Date picker (YYYY-MM-DD).</dd>
+                <dt>Workdays</dt><dd>Estimated effort. Fractional values allowed (e.g. 0.5).</dd>
+                <dt>Allocation %</dt><dd>How much of the person's day this task occupies (1–100). Defaults to 100.</dd>
+                <dt>End Date</dt><dd>Calculated automatically — not editable directly.</dd>
+                <dt>Progress</dt><dd>Slider 0–100%.</dd>
+                <dt>Tags</dt><dd>Comma-separated values, e.g. <code>calibration,urgent</code>.</dd>
+              </dl>
+              <p>To delete a task, open it for editing and click <strong>Delete Task</strong> (lower-left of the dialog). Deletion is permanent and asks for confirmation.</p>
+            </div>
+          </div>
+
+          <!-- End date calculation -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">End Date Calculation</span></div>
+            <div class="doc-body">
+              <p>The calculated end date accounts for allocation and skips weekends and holidays.</p>
+              <pre>calendar_days = ⌈ workdays ÷ (allocation% ÷ 100) ⌉</pre>
+              <p>Starting from the start date, the app counts forward that many calendar workdays (Mon–Fri), skipping any dates in the holiday calendar.</p>
+              <p><strong>Example:</strong> 10 workdays at 50% allocation needs 20 calendar workdays. Starting on a Monday with no holidays, the end date lands on the Friday four weeks later.</p>
+              <p>The end date field updates live as you type. Changing holidays in Settings immediately recalculates all existing task end dates.</p>
+            </div>
+          </div>
+
+          <!-- Views -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">Views</span></div>
+            <div class="doc-body">
+              <p><strong>Dashboard</strong> — KPI summary cards, status/priority/lab bar charts, staff workload, and upcoming deadlines (next 14 days). Charts resize with the window.</p>
+              <p><strong>Table</strong> — Sortable, filterable grid. Click any column header to sort; click again to reverse. Use the filter dropdowns and the search box to narrow results. Click any row to edit.</p>
+              <p><strong>Gantt</strong> — Canvas timeline with three zoom levels: <em>Day</em>, <em>Week</em>, and <em>Month</em>. Hover over a bar for a full tooltip. Click <strong>Today</strong> to scroll to the current date. Bar colour = priority; fill opacity = progress.</p>
+              <p><strong>Kanban</strong> — Cards grouped by status column. Drag a card to a different column to change its status. Filter by lab or person using the dropdowns above the board.</p>
+            </div>
+          </div>
+
+          <!-- Saving & Portability - DETAILED -->
+          <div class="card full">
+            <div class="card-header"><span class="card-title">Saving &amp; Portability</span></div>
+            <div class="doc-body">
+              <p>WIP Flow uses three complementary layers so your data is never lost and always travels with the file.</p>
+              <p><strong>Layer 1 — localStorage (automatic)</strong><br>
+              Every change is saved to browser localStorage within 400 ms. The save indicator in the sidebar turns green after each successful write. This is fast and invisible. <em>Limitation:</em> localStorage is scoped to the file's URL. If you move <code>WIPflow.html</code> to a different folder, the browser opens a different origin and finds no data.</p>
+              <p><strong>Layer 2 — Embedded data in the HTML file</strong><br>
+              On every save, the full dataset is written into a <code>&lt;script id="labwip-embedded-data"&gt;</code> tag inside the HTML file in memory. This means the file is self-contained — if you use <strong>↓ Save as HTML</strong>, the downloaded copy carries all your data. Open it on any machine, any browser, without needing localStorage.</p>
+              <p><strong>Layer 3 — .labwip JSON export</strong><br>
+              <strong>↓ Export .labwip</strong> (Settings → Data Management) downloads a plain JSON backup file. Use this to transfer data between files or as an off-site backup. Import with <strong>↓ Import</strong> in the topbar.</p>
+              <p><strong>Recommended workflow for portability:</strong></p>
+              <ol>
+                <li>Work normally — localStorage handles day-to-day saves automatically.</li>
+                <li>Periodically click <strong>↓ Save as HTML</strong> in the sidebar. This downloads a versioned <code>WIPflow_v1.2.N.html</code> file with all data embedded.</li>
+                <li>Replace your working <code>WIPflow.html</code> with the downloaded file.</li>
+                <li>When moving to a new machine, copy that file — it carries everything.</li>
+              </ol>
+              <p><strong>Save triggers:</strong></p>
+              <table class="doc-table">
+                <thead><tr><th>Trigger</th><th>When</th><th>Behaviour</th></tr></thead>
+                <tbody>
+                  <tr><td>Save-on-change</td><td>Every task/settings edit</td><td>Debounced 400 ms</td></tr>
+                  <tr><td>Manual save</td><td>⬡ Save button or Ctrl+S</td><td>Immediate, shows toast</td></tr>
+                  <tr><td>Periodic autosave</td><td>Every N minutes (configurable)</td><td>Silent background write; set to 0 to disable</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Versioning - DETAILED -->
+          <div class="card full">
+            <div class="card-header"><span class="card-title">Versioning</span></div>
+            <div class="doc-body">
+              <p>WIP Flow uses a three-part version number: <code>MAJOR.MINOR.SAVE</code></p>
+              <table class="doc-table">
+                <thead><tr><th>Part</th><th>Who changes it</th><th>When</th></tr></thead>
+                <tbody>
+                  <tr><td>MAJOR</td><td>Developer</td><td>Breaking changes or major new features</td></tr>
+                  <tr><td>MINOR</td><td>Developer</td><td>Bug fixes, small improvements, new non-breaking features</td></tr>
+                  <tr><td>SAVE</td><td>App (automatic)</td><td>Increments each time you click <strong>↓ Save as HTML</strong></td></tr>
+                </tbody>
+              </table>
+              <p>The current version is shown in the sidebar below the logo. When you download a copy via <strong>↓ Save as HTML</strong>, the save counter increments and the filename includes the full version, e.g. <code>WIPflow_v1.2.3.html</code>. This means every exported file has a unique, monotonically increasing identifier — you can always tell which copy is newer just from the filename.</p>
+              <p>The save counter is stored in your data (not hardcoded), so it persists across sessions and survives file moves as long as you always start from the latest exported copy.</p>
+              <p><strong>Tip:</strong> If you want to reset the save counter (e.g. after a fresh install), set <code>saveVersion</code> to 0 in the .labwip JSON file before importing.</p>
+            </div>
+          </div>
+
+          <!-- Holidays -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">Holiday Calendar</span></div>
+            <div class="doc-body">
+              <p>Holidays are excluded from workday counting. Add them individually in <strong>Settings → Holiday Calendar</strong> (enter a date and optional name, then click <strong>Add</strong> or press Enter), or import a CSV file.</p>
+              <p><strong>CSV format:</strong> one row per holiday, first column is the date (<code>YYYY-MM-DD</code>), optional second column is the name. Comma or semicolon delimited. A header row is skipped automatically if the first cell is not a valid date.</p>
+              <pre>2026-01-01,New Year's Day
+2026-06-06,National Day
+2026-12-25,Christmas Day</pre>
+              <p>Adding or importing holidays immediately recalculates all task end dates.</p>
+            </div>
+          </div>
+
+          <!-- Settings -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">Settings</span></div>
+            <div class="doc-body">
+              <p>All dropdown options used in the task editor (laboratories, persons, priorities, statuses, tags) are managed in <strong>Settings</strong>. Add items by typing and pressing Enter or clicking <strong>Add</strong>. Remove with ✕.</p>
+              <p><em>Removing an option does not modify existing tasks</em> — tasks retain their values; the removed item just no longer appears in the dropdown for new tasks.</p>
+              <p><strong>Autosave interval:</strong> set 1–60 minutes. Set to 0 to disable periodic saves (save-on-change still works).</p>
+              <p><strong>Theme:</strong> Dark (default) or Light. Persisted across sessions.</p>
+              <p><strong>Data Management:</strong> Export CSV (one-way, for spreadsheets), Export .labwip (backup/transfer), Import .labwip, Clear All Data.</p>
+            </div>
+          </div>
+
+          <!-- Keyboard shortcuts -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">Keyboard Shortcuts</span></div>
+            <div class="doc-body">
+              <table class="doc-table">
+                <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
+                <tbody>
+                  <tr><td>Ctrl+S / ⌘S</td><td>Manual save</td></tr>
+                  <tr><td>Escape</td><td>Close task editor</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /view-help -->
+
+      <!-- ── ABOUT ── -->
+      <div id="view-about" class="view-panel">
+        <div class="doc-grid">
+
+          <!-- Hero -->
+          <div class="card full">
+            <div class="about-hero">
+              <img id="about-logo" src="" alt="WIP Flow" style="display:none">
+              <div>
+                <div class="about-hero-name">WIP Flow</div>
+                <div class="about-hero-sub">Laboratory Work-in-Progress Tracker &nbsp;·&nbsp; v<span id="about-version">1.2.0</span></div>
+              </div>
+            </div>
+            <div class="doc-body" style="border-top:1px solid var(--border);padding-top:14px">
+              <p>WIP Flow is a standalone, offline-first web application for tracking work in progress in research laboratory environments. It runs entirely in the browser by opening a single HTML file — no installation, no server, no internet connection required after initial load.</p>
+              <p>Designed for operational planning in multi-laboratory settings: tracking ongoing work, visualising timelines, coordinating staff allocation, and estimating realistic end dates based on workday calculations including weekends and holidays.</p>
+              <dl class="doc-kv" style="margin-top:4px">
+                <dt>Author</dt><dd>Daniel Rosik</dd>
+                <dt>Version</dt><dd id="about-version-full">1.2.0</dd>
+                <dt>File</dt><dd><code>WIPflow.html</code> — single file, self-contained</dd>
+                <dt>Compatibility</dt><dd>Firefox · Chrome · Edge (Firefox primary target)</dd>
+                <dt>License</dt><dd>Internal use</dd>
+              </dl>
+            </div>
+          </div>
+
+          <!-- Features -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">Features</span></div>
+            <div class="doc-body">
+              <ul>
+                <li>Dashboard with KPI cards and canvas bar charts</li>
+                <li>Sortable, filterable task table</li>
+                <li>Canvas Gantt timeline (day / week / month zoom)</li>
+                <li>Kanban board with drag-and-drop status changes</li>
+                <li>Workday end-date calculation with weekend and holiday skipping</li>
+                <li>Three-layer persistence: localStorage + embedded HTML data + .labwip JSON</li>
+                <li>Versioned HTML export (<code>MAJOR.MINOR.SAVE</code>)</li>
+                <li>Holiday calendar with CSV import</li>
+                <li>Dark and light themes</li>
+                <li>CSV and .labwip export</li>
+                <li>Fully offline — no dependencies at runtime</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Architecture -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">Technical Architecture</span></div>
+            <div class="doc-body">
+              <p>Single HTML file (~3 500 lines). All HTML, CSS, and JavaScript inline. No build step, no package manager, no transpilation.</p>
+              <p>JavaScript is structured as plain object literals (no classes):</p>
+              <table class="doc-table">
+                <thead><tr><th>Module</th><th>Responsibility</th></tr></thead>
+                <tbody>
+                  <tr><td>AppState</td><td>Central data store; task CRUD; filtering/sorting</td></tr>
+                  <tr><td>Storage</td><td>localStorage, embedded data, file export/import</td></tr>
+                  <tr><td>WorkCalendar</td><td>Workday arithmetic; end date calculation</td></tr>
+                  <tr><td>App</td><td>View routing; autosave timer; lifecycle</td></tr>
+                  <tr><td>TaskModal</td><td>Create/edit task dialog</td></tr>
+                  <tr><td>Dashboard</td><td>KPI cards; canvas charts; ResizeObserver</td></tr>
+                  <tr><td>TableView</td><td>Sortable/filterable task grid</td></tr>
+                  <tr><td>Gantt</td><td>Canvas timeline; scroll sync; tooltip</td></tr>
+                  <tr><td>KanbanView</td><td>Drag-and-drop status columns</td></tr>
+                  <tr><td>Settings</td><td>List editors; theme; autosave; holidays</td></tr>
+                  <tr><td>Toast</td><td>Non-blocking notifications</td></tr>
+                </tbody>
+              </table>
+              <p>Canvas is used for Dashboard charts and the Gantt timeline. All other views are rendered via template-literal HTML strings assigned to <code>innerHTML</code>.</p>
+            </div>
+          </div>
+
+          <!-- Changelog -->
+          <div class="card full">
+            <div class="card-header"><span class="card-title">Changelog</span></div>
+            <div class="doc-body">
+              <p><strong>v1.2</strong> — Bug fixes, UX improvements, versioning, WIP Flow rebrand</p>
+              <ul>
+                <li>Fixed: task modal toast always showed "Task created" instead of "Task updated"</li>
+                <li>Fixed: holiday additions did not recalculate existing task end dates</li>
+                <li>Kanban: equal-height columns; 2-line card name clamp; empty state; theme-switch re-render; onDrop error toast</li>
+                <li>UX: end date field changed to <code>disabled</code>; Gantt tooltip listener leak fixed</li>
+                <li>Versioning: <code>MAJOR.MINOR.SAVE</code> format; versioned HTML export filename</li>
+                <li>Assets: app renamed WIP Flow; base64-embedded favicon (16/32/128 px) and sidebar logo</li>
+                <li>Help and About views added</li>
+                <li>Persistent "↓ Save as HTML" button in sidebar; dashboard first-run empty state</li>
+              </ul>
+              <p><strong>v1.1</strong> — Kanban board, Gantt improvements</p>
+              <ul>
+                <li>Added Kanban board view with drag-and-drop</li>
+                <li>Gantt day abbreviations</li>
+                <li>Fixed: Gantt weekend fill invisible in dark mode</li>
+                <li>Holiday calendar in Settings with CSV import</li>
+                <li>Resource conflict detection on Dashboard</li>
+              </ul>
+              <p><strong>v1.0</strong> — Initial release</p>
+              <ul>
+                <li>Dashboard, Table, Gantt, and Settings views</li>
+                <li>Three-layer persistence (localStorage + embedded HTML + .labwip)</li>
+                <li>Workday-based end date calculation with weekend skipping</li>
+                <li>Configurable autosave; manual save with Ctrl+S</li>
+                <li>Dark and light themes; CSV export</li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /view-about -->
 
     </div><!-- /view-area -->
   </div><!-- /main -->
@@ -2138,8 +2465,21 @@ const App = {
     if (panel) panel.classList.add('active');
 
     // Update topbar
-    const titles = { dashboard:'Dashboard', table:'Task Table', gantt:'Gantt Timeline', kanban:'Kanban Board', settings:'Settings' };
+    const titles = { dashboard:'Dashboard', table:'Task Table', gantt:'Gantt Timeline', kanban:'Kanban Board', settings:'Settings', help:'Help', about:'About' };
     document.getElementById('topbar-title').textContent = titles[view] || view;
+
+    // Sync About version display
+    if (view === 'about') {
+      const ver = `${APP_BASE_VERSION}.${AppState.settings.saveVersion || 0}`;
+      const el1 = document.getElementById('about-version');
+      const el2 = document.getElementById('about-version-full');
+      if (el1) el1.textContent = ver;
+      if (el2) el2.textContent = ver;
+      // Show logo in about hero
+      const logoImg = document.querySelector('#sidebar-logo img');
+      const aboutLogo = document.getElementById('about-logo');
+      if (logoImg && aboutLogo) { aboutLogo.src = logoImg.src; aboutLogo.style.display = 'block'; }
+    }
 
     // Render view
     if (view === 'dashboard') Dashboard.render();
