@@ -1388,6 +1388,8 @@ tr.overdue td.td-name { color: var(--red); }
               <input class="form-control" id="add-holidays-name" placeholder="Name (optional)"
                 onkeydown="if(event.key==='Enter') Settings.addHoliday()">
               <button class="btn btn-secondary btn-sm" onclick="Settings.addHoliday()">Add</button>
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('holiday-csv-input').click()" title="Import CSV (YYYY-MM-DD,Name)">↓ CSV</button>
+              <input type="file" id="holiday-csv-input" accept=".csv,.txt" style="display:none" onchange="Settings.importHolidaysCSV(event)">
             </div>
           </div>
 
@@ -1479,7 +1481,7 @@ tr.overdue td.td-name { color: var(--red); }
         </div>
         <div class="form-group">
           <label class="form-label">Responsible Person <span class="required">*</span></label>
-          <select class="form-control" id="f-person"></select>
+          <select class="form-control" id="f-person" onchange="TaskModal.onPersonChange()"></select>
         </div>
       </div>
 
@@ -1665,6 +1667,16 @@ const WorkCalendar = {
   daysBetween(a, b) {
     if (!a || !b) return null;
     return Math.round((b - a) / (1000*60*60*24));
+  },
+
+  /** First workday strictly after dateStr, skipping weekends and holidays */
+  nextWorkday(dateStr, holidays) {
+    const skip = new Set(holidays || []);
+    let d = this.addDays(this.parse(dateStr), 1);
+    while (!this.isWorkday(d) || skip.has(this.fmt(d))) {
+      d = this.addDays(d, 1);
+    }
+    return this.fmt(d);
   }
 };
 
@@ -2104,7 +2116,7 @@ const TaskModal = {
     // Populate fields
     const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
     set('f-name',        task?.name);
-    set('f-start',       task?.startDate);
+    set('f-start',       task?.startDate || WorkCalendar.today());
     set('f-workdays',    task?.workdays);
     set('f-alloc',       task?.alloc ?? 100);
     set('f-tags',        task?.tags);
@@ -2186,6 +2198,21 @@ const TaskModal = {
     const alloc    = parseFloat(document.getElementById('f-alloc').value)    || 100;
     const end      = WorkCalendar.calcEndDate(start, workdays, alloc, AppState.settings.holidays);
     document.getElementById('f-enddate').value = end ? WorkCalendar.fmt(end) : '';
+  },
+
+  onPersonChange() {
+    if (this._editId) return; // only for new tasks
+    const person = document.getElementById('f-person').value;
+    if (!person) return;
+    const latestEnd = AppState.tasks
+      .filter(t => t.person === person && t.endDate && (t.status||'').toLowerCase() !== 'completed')
+      .map(t => t.endDate)
+      .sort()
+      .pop();
+    if (latestEnd) {
+      document.getElementById('f-start').value = WorkCalendar.nextWorkday(latestEnd, AppState.settings.holidays);
+      this.calcEndDate();
+    }
   },
 
   _populateSelect(id, items, selected) {
@@ -2423,7 +2450,7 @@ const Dashboard = {
     if (!entries.length) { ctx.fillStyle = textCol; ctx.font = '12px IBM Plex Mono,monospace'; ctx.fillText('No data', 10, 20); return; }
 
     const maxVal = Math.max(...entries.map(e=>e[1]), 1);
-    const pad    = { top:10, right:16, bottom:42, left:32 };
+    const pad    = { top:24, right:16, bottom:42, left:32 };
     const chartW = W - pad.left - pad.right;
     const chartH = H - pad.top  - pad.bottom;
 
@@ -3079,7 +3106,7 @@ const Settings = {
           <span class="item-name" style="font-family:var(--mono);font-size:12px">${dayLabel}${name ? ' — ' + escHtml(name) : ''}</span>
           <button class="btn btn-ghost btn-sm btn-icon" onclick="Settings.removeHoliday(${items.indexOf(entry)})" title="Remove" style="color:var(--text-3);font-size:11px">✕</button>
         </div>`;
-    }).join('') || '<div style="font-size:12px;color:var(--text-3);padding:6px 0">No holidays configured</div>';
+    }).join('') || '<div style="font-size:12px;color:var(--text-3);padding:6px 8px">No holidays configured</div>';
   },
 
   addHoliday() {
@@ -3110,6 +3137,34 @@ const Settings = {
     AppState.settings.holidays.splice(idx, 1);
     this.render();
     Storage.save();
+  },
+
+  importHolidaysCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const lines = e.target.result.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      if (!AppState.settings.holidays) AppState.settings.holidays = [];
+      let added = 0, skipped = 0;
+      for (const line of lines) {
+        const parts = line.split(/[,;]/).map(p => p.trim());
+        const date  = parts[0];
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue; // skip header / invalid rows
+        if (AppState.settings.holidays.some(h => h.slice(0, 10) === date)) { skipped++; continue; }
+        const name  = parts.slice(1).join(' ').trim();
+        AppState.settings.holidays.push(name ? `${date} ${name}` : date);
+        added++;
+      }
+      if (added > 0) { this.render(); Storage.save(); }
+      Toast.show(
+        `${added} holiday${added !== 1 ? 's' : ''} imported` +
+        (skipped > 0 ? ` · ${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped` : ''),
+        added > 0 ? 'success' : 'info'
+      );
+      event.target.value = '';
+    };
+    reader.readAsText(file);
   },
 
   _renderList(containerId, items, key) {
