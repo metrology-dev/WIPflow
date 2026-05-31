@@ -26,14 +26,14 @@ The entire application lives in `WIPflow.html` (~3 900 lines), structured as a s
 - **`DEFAULT_SETTINGS`** — Constant seed values for labs, persons, priorities, statuses, tags, and `saveVersion`.
 - **`WorkCalendar`** — Date arithmetic: `isWorkday`, `calcEndDate(startStr, workdays, allocPct)`, `fmt`, `parse`. Skips weekends and holidays from `AppState.settings.holidays`.
 - **`AppState`** — In-memory store: `tasks[]`, `settings{}`. CRUD via `saveTask(data)`, `deleteTask(id)`, `getTask(id)`, `getFilteredTasks(filters, sortCol, sortDir)`, serialised via `toJSON/fromJSON`.
-- **`Storage`** — Persistence: `save()` writes to localStorage + DOM tag; `exportHTML()` downloads a versioned self-contained file; `exportFile()` downloads a `.labwip` JSON; `markDirty()` debounces a save by 400 ms.
+- **`Storage`** — Persistence: `save()` writes to localStorage + DOM tag; `exportHTML()` downloads a versioned self-contained file; `exportFile()` downloads a `.labwip` JSON; `exportCSV()` CSV (one-way); `exportXLS()` SpreadsheetML; `printPDF()` calls `window.print()`; `markDirty()` debounces a save by 400 ms.
 - **`App`** — Lifecycle: `init()`, `refresh()`, `switchView(name)`, autosave timer. `refresh()` re-renders the active view only — it does NOT call `markDirty()`.
 - **`TaskModal`** — Create/edit dialog. `open(taskId?)` populates from `AppState.getTask`; `save()` captures `wasEdit` before `close()`, then calls `AppState.saveTask`, `Storage.markDirty()`, and `App.refresh()`.
 - **`Dashboard`** — Canvas-based KPI charts. Uses `ResizeObserver` to redraw on resize. Shows empty state when no tasks exist.
-- **`TableView`** — Sortable/filterable `<table>`. Filters held in `TableView._filters`.
+- **`TableView`** — Sortable/filterable `<table>`. Filters held in `TableView._filters`. Click a Status or Progress cell to edit inline without opening the modal (`editStatus`, `editProgress`).
 - **`Gantt`** — Canvas timeline. Zoom levels: day/week/month. Task panel is sticky on horizontal scroll and resizable via a drag handle. Tooltip guard stored on `Gantt._tooltipBound` (not on the canvas element).
 - **`GanttFilters`** — Filter state for the Gantt view.
-- **`KanbanView`** — Kanban board with drag-and-drop. Equal-height columns. Shows empty state when filtered tasks = 0. `onDrop` calls `Storage.markDirty()` after mutating task status.
+- **`KanbanView`** — Kanban board with drag-and-drop. Equal-height columns. Each card has a "Move to…" status `<select>` for keyboard accessibility (`moveCard`). Shows empty state when filtered tasks = 0. `onDrop` and `moveCard` both call `Storage.markDirty()`.
 - **`Settings`** — Editable dropdown lists, theme toggle, autosave interval, holiday calendar, data management buttons.
 - **`Toast`** — Non-blocking notification toasts.
 
@@ -70,7 +70,7 @@ Version format: `MAJOR.MINOR.SAVE`
 - **MINOR** — Developer edits `APP_BASE_VERSION`. Use for bug fixes and small improvements.
 - **SAVE** — Incremented automatically each time the user clicks "Save as HTML".
 
-`APP_BASE_VERSION` is a constant near the top of the JS section (e.g. `const APP_BASE_VERSION = '1.5';`).
+`APP_BASE_VERSION` is a constant near the top of the JS section (e.g. `const APP_BASE_VERSION = '1.6';`).
 `saveVersion` lives in `AppState.settings` and persists in localStorage and embedded data.
 
 **Rule of thumb:** bump MINOR when shipping a fix or small feature; bump MAJOR for breaking changes.

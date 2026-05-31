@@ -7,6 +7,27 @@ Last analysis: 2026-05-31 (full source review of all modules).
 
 ## ✅ Completed
 
+### v1.6 (2026-05-31)
+
+**I5 — CSV export documented as one-way**
+CSV export button tooltip and Help text now state that CSV is export-only; re-import requires the `.labwip` format.
+
+**I8 — Accessibility**
+- Modal: Tab key trapped within the dialog; Escape closes it.
+- Nav: `aria-current="page"` tracks the active view; all nav buttons have `aria-label`; `role="separator"` on dividers.
+- Kanban: columns are `role="region"` with count-aware labels; card lists are `role="list"`; cards are `role="listitem"` with task name in `aria-label`; each card has a "Move to…" status `<select>` as a keyboard-accessible drag alternative.
+- Decorative icons marked `aria-hidden="true"` throughout.
+
+**I12 — Inline task editing in Table View**
+- Click any Status cell to replace it with a `<select>` showing all statuses — change saves immediately, Escape cancels.
+- Click any Progress cell to replace it with a number input — Enter or blur saves, Escape cancels.
+- Both cells show a hover highlight (`.td-inline-edit`); row click still opens the full modal for all other cells.
+
+**I13 — PDF and Excel export**
+- Export Excel (.xls): SpreadsheetML XML, opens in Excel and LibreOffice Calc; numeric columns use `ss:Type="Number"`.
+- Print / Save as PDF: `window.print()` with `@media print` CSS that hides sidebar, topbar, filters, and buttons and lays out the active view cleanly.
+- Both options added to Settings → Data Management.
+
 ### v1.5 (2026-05-31)
 
 **I14 — Typography and rendering quality**
@@ -16,7 +37,6 @@ Last analysis: 2026-05-31 (full source review of all modules).
 - KPI card values: weight 300 → 500 for legibility on dark backgrounds.
 - Card section titles: mono → Inter 600 at 14 px.
 - Chart label colour uses `--text` for values, `--text-2` for axes — improved contrast.
-- Bumped `APP_BASE_VERSION` to `1.5`.
 
 ### v1.4 (2026-05-31)
 
@@ -78,26 +98,6 @@ Restructured body into `#gantt-body-outer` / `#gantt-task-panel` / `#gantt-body-
 - Favicon and logo updated to WIP Flow branding.
 - "Save as HTML" button added to sidebar footer.
 - Dashboard first-run empty state.
-
----
-
-## 🟠 Backlog
-
-**I5 — CSV export is one-way**
-`exportCSV` produces a file but there is no matching CSV import (only `.labwip` JSON). Either document as export-only or implement CSV import.
-
-**I8 — Accessibility gaps**
-- Modal has `role="dialog"` but no focus-trap.
-- Nav items and Kanban drag-drop columns lack ARIA labels.
-- Drag-and-drop has no keyboard fallback.
-
-**I12 — Inline task edit in Table View**
-Clicking a row opens the full modal. Direct cell editing for Status and Progress (the two most-changed fields at standups) would speed up daily updates — a small inline dropdown/number input triggered by clicking those cells.
-
-**I13 — PDF / Excel export**
-Can be prototyped without a build step:
-- PDF via `window.print()` + `@media print` CSS.
-- Excel via a lightweight CSV → XLSX conversion.
 
 ---
 

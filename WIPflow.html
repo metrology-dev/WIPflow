@@ -666,6 +666,8 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 
 .td-name { font-weight: 500; color: var(--text); }
 .td-mono { font-family: var(--mono); font-size: 12px; color: var(--text-2); }
+.td-inline-edit { cursor: pointer; }
+.td-inline-edit:hover { background: var(--bg-3); }
 
 /* Progress bar in table */
 .prog-bar {
@@ -1246,8 +1248,41 @@ tr.overdue td.td-name { color: var(--red); }
 .kc-date { font-size: 11px; font-family: var(--mono); color: var(--text-3); margin-bottom: 5px; }
 .kc-date.kc-overdue { color: var(--red); }
 .kc-tags { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 5px; }
-.kc-prog-bar { height: 3px; background: var(--bg-4); border-radius: 2px; overflow: hidden; }
+.kc-prog-bar { height: 3px; background: var(--bg-4); border-radius: 2px; overflow: hidden; margin-bottom: 6px; }
 .kc-prog-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.kc-move select {
+  width: 100%;
+  font-size: 11px;
+  padding: 2px 4px;
+  background: var(--bg-3);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: var(--font);
+}
+
+/* ================================================================
+   PRINT / PDF
+   ================================================================ */
+@media print {
+  #sidebar, #topbar, #gantt-tooltip,
+  #table-toolbar, #gantt-toolbar, .kanban-toolbar,
+  .kc-move, .btn, #autosave-indicator,
+  #gantt-resize-handle { display: none !important; }
+
+  body, html { background: #fff !important; color: #000 !important; }
+  #main { margin: 0 !important; }
+  #view-area { padding: 0 !important; overflow: visible !important; }
+  .view-panel { display: none !important; }
+  .view-panel.active { display: block !important; overflow: visible !important; }
+
+  .card { border: 1px solid #ccc !important; box-shadow: none !important; break-inside: avoid; }
+  .card-title { color: #000 !important; }
+  tr { break-inside: avoid; }
+  #gantt-body-outer, #gantt-body-wrap { overflow: visible !important; }
+  canvas { max-width: 100%; }
+}
 </style>
 </head>
 <body>
@@ -1259,41 +1294,41 @@ tr.overdue td.td-name { color: var(--red); }
       <img class="logo-icon" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJiZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMDgyYTYzIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iNTUlIiBzdG9wLWNvbG9yPSIjMGIzZjhlIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzA2MjE0YSIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KCiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Imdsb3NzIiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iMC4yMiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iMCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KCiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImN5YW5CYXIiIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIwIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzQyY2ZmZiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM3MmVjZmYiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJ5ZWxsb3dCYXIiIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIwIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2ZmYmYyZiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNmZmUwNjYiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJwdXJwbGVCYXIiIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIwIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzljNWNmZiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNjODkyZmYiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CgogICAgPGZpbHRlciBpZD0ic2hhZG93IiB4PSItMzAlIiB5PSItMzAlIiB3aWR0aD0iMTYwJSIgaGVpZ2h0PSIxNjAlIj4KICAgICAgPGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjE4IiBzdGREZXZpYXRpb249IjIwIiBmbG9vZC1vcGFjaXR5PSIwLjM1Ii8+CiAgICA8L2ZpbHRlcj4KCiAgICA8ZmlsdGVyIGlkPSJpbm5lckdsb3ciPgogICAgICA8ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMCIgc3RkRGV2aWF0aW9uPSI4IiBmbG9vZC1jb2xvcj0iI2ZmZmZmZiIgZmxvb2Qtb3BhY2l0eT0iMC4xNSIvPgogICAgPC9maWx0ZXI+CgogICAgPGZpbHRlciBpZD0iYmFyU2hhZG93Ij4KICAgICAgPGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjgiIHN0ZERldmlhdGlvbj0iOCIgZmxvb2Qtb3BhY2l0eT0iMC4zNSIvPgogICAgPC9maWx0ZXI+CiAgPC9kZWZzPgoKICA8ZWxsaXBzZSBjeD0iNTEyIiBjeT0iOTYwIiByeD0iMzYwIiByeT0iMzYiIGZpbGw9IiMwMDAwMDAiIG9wYWNpdHk9IjAuMjIiLz4KCiAgPGcgZmlsdGVyPSJ1cmwoI3NoYWRvdykiPgogICAgPHJlY3QgeD0iNDAiIHk9IjQwIiB3aWR0aD0iOTQ0IiBoZWlnaHQ9Ijk0NCIgcng9IjEyMCIKICAgICAgICAgIGZpbGw9InVybCgjYmcpIgogICAgICAgICAgc3Ryb2tlPSIjMmE1Y2E4IgogICAgICAgICAgc3Ryb2tlLXdpZHRoPSI2Ii8+CgogICAgPHJlY3QgeD0iNDgiIHk9IjQ4IiB3aWR0aD0iOTI4IiBoZWlnaHQ9IjkyOCIgcng9IjExMiIKICAgICAgICAgIGZpbGw9Im5vbmUiCiAgICAgICAgICBzdHJva2U9IiM3Y2I4ZmYiCiAgICAgICAgICBzdHJva2Utb3BhY2l0eT0iMC4xNSIKICAgICAgICAgIHN0cm9rZS13aWR0aD0iMiIvPgoKICAgIDxwYXRoIGQ9Ik00MCwxNjAKICAgICAgICAgICAgIFE1MTIsNDAgOTg0LDE0MAogICAgICAgICAgICAgTDk4NCw0MAogICAgICAgICAgICAgTDQwLDQwIFoiCiAgICAgICAgICBmaWxsPSJ1cmwoI2dsb3NzKSIvPgogIDwvZz4KCiAgPCEtLSBHcmlkIC0tPgogIDxnIG9wYWNpdHk9IjAuMTAiIHN0cm9rZT0iIzlmYzhmZiIgc3Ryb2tlLXdpZHRoPSIyIj4KICAgIDxsaW5lIHgxPSIxODAiIHkxPSIzMjAiIHgyPSIxODAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSIyNDAiIHkxPSIzMjAiIHgyPSIyNDAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSIzMDAiIHkxPSIzMjAiIHgyPSIzMDAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSIzNjAiIHkxPSIzMjAiIHgyPSIzNjAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSI0MjAiIHkxPSIzMjAiIHgyPSI0MjAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSI0ODAiIHkxPSIzMjAiIHgyPSI0ODAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSI1NDAiIHkxPSIzMjAiIHgyPSI1NDAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSI2MDAiIHkxPSIzMjAiIHgyPSI2MDAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSI2NjAiIHkxPSIzMjAiIHgyPSI2NjAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSI3MjAiIHkxPSIzMjAiIHgyPSI3MjAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSI3ODAiIHkxPSIzMjAiIHgyPSI3ODAiIHkyPSI4NjAiLz4KCiAgICA8bGluZSB4MT0iMTUwIiB5MT0iNDIwIiB4Mj0iODYwIiB5Mj0iNDIwIi8+CiAgICA8bGluZSB4MT0iMTUwIiB5MT0iNTAwIiB4Mj0iODYwIiB5Mj0iNTAwIi8+CiAgICA8bGluZSB4MT0iMTUwIiB5MT0iNTgwIiB4Mj0iODYwIiB5Mj0iNTgwIi8+CiAgICA8bGluZSB4MT0iMTUwIiB5MT0iNjYwIiB4Mj0iODYwIiB5Mj0iNjYwIi8+CiAgICA8bGluZSB4MT0iMTUwIiB5MT0iNzQwIiB4Mj0iODYwIiB5Mj0iNzQwIi8+CiAgPC9nPgoKICA8dGV4dCB4PSIxNzAiIHk9IjMzMCIKICAgICAgICBmb250LWZhbWlseT0iU2Vnb2UgVUksIEFyaWFsLCBzYW5zLXNlcmlmIgogICAgICAgIGZvbnQtc2l6ZT0iMjUwIgogICAgICAgIGZvbnQtd2VpZ2h0PSI4MDAiCiAgICAgICAgZmlsbD0iI2ZmZmZmZiIKICAgICAgICBmaWx0ZXI9InVybCgjaW5uZXJHbG93KSI+V0lQPC90ZXh0PgoKICA8dGV4dCB4PSIxODUiIHk9IjUwMCIKICAgICAgICBmb250LWZhbWlseT0iU2Vnb2UgVUksIEFyaWFsLCBzYW5zLXNlcmlmIgogICAgICAgIGZvbnQtc2l6ZT0iMTEwIgogICAgICAgIGZvbnQtd2VpZ2h0PSI3MDAiCiAgICAgICAgZmlsbD0iIzY3ZGVmZiI+RmxvdzwvdGV4dD4KCiAgPGcgZmlsdGVyPSJ1cmwoI2JhclNoYWRvdykiPgogICAgPHJlY3QgeD0iNDcwIiB5PSI1MDAiIHdpZHRoPSIyMjAiIGhlaWdodD0iNTQiIHJ4PSIxNCIgZmlsbD0idXJsKCNjeWFuQmFyKSIvPgogICAgPHJlY3QgeD0iMjIwIiB5PSI1NzAiIHdpZHRoPSIyODAiIGhlaWdodD0iNTQiIHJ4PSIxNCIgZmlsbD0idXJsKCNjeWFuQmFyKSIvPgogICAgPHJlY3QgeD0iNTIwIiB5PSI2NDAiIHdpZHRoPSIyNjAiIGhlaWdodD0iNTQiIHJ4PSIxNCIgZmlsbD0idXJsKCN5ZWxsb3dCYXIpIi8+CiAgICA8cmVjdCB4PSI3MjAiIHk9IjczNSIgd2lkdGg9IjE4MCIgaGVpZ2h0PSI1NCIgcng9IjE0IiBmaWxsPSJ1cmwoI3B1cnBsZUJhcikiLz4KICA8L2c+CgogIDxsaW5lIHgxPSI3NzAiIHkxPSIzODUiIHgyPSI3NzAiIHkyPSI4MjAiCiAgICAgICAgc3Ryb2tlPSIjZjJmMmYyIgogICAgICAgIHN0cm9rZS13aWR0aD0iMTgiCiAgICAgICAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CgogIDxjaXJjbGUgY3g9Ijc3MCIgY3k9IjM4MCIgcj0iMzAiCiAgICAgICAgICBmaWxsPSIjZjdmN2Y3IgogICAgICAgICAgc3Ryb2tlPSIjZDBkMGQwIgogICAgICAgICAgc3Ryb2tlLXdpZHRoPSI0Ii8+Cjwvc3ZnPgo=" width="40" height="40" alt="WIP Flow">
       <div>
         <div class="logo-text">WIP Flow</div>
-        <div class="logo-sub">v<span id="version-display">1.5.0</span></div>
+        <div class="logo-sub">v<span id="version-display">1.6.0</span></div>
       </div>
     </div>
 
-    <nav id="sidebar-nav">
+    <nav id="sidebar-nav" aria-label="Main navigation">
       <div class="nav-section-label">Views</div>
-      <button class="nav-item active" data-view="dashboard" onclick="App.switchView('dashboard')">
-        <span class="nav-icon">◈</span> Dashboard
+      <button class="nav-item active" data-view="dashboard" onclick="App.switchView('dashboard')" aria-current="page" aria-label="Dashboard view">
+        <span class="nav-icon" aria-hidden="true">◈</span> Dashboard
       </button>
-      <button class="nav-item" data-view="table" onclick="App.switchView('table')">
-        <span class="nav-icon">≡</span> Table
-        <span class="nav-badge" id="nav-badge-table">0</span>
+      <button class="nav-item" data-view="table" onclick="App.switchView('table')" aria-label="Table view">
+        <span class="nav-icon" aria-hidden="true">≡</span> Table
+        <span class="nav-badge" id="nav-badge-table" aria-label="active tasks">0</span>
       </button>
-      <button class="nav-item" data-view="gantt" onclick="App.switchView('gantt')">
-        <span class="nav-icon">▤</span> Gantt
+      <button class="nav-item" data-view="gantt" onclick="App.switchView('gantt')" aria-label="Gantt chart view">
+        <span class="nav-icon" aria-hidden="true">▤</span> Gantt
       </button>
-      <button class="nav-item" data-view="kanban" onclick="App.switchView('kanban')">
-        <span class="nav-icon">⊞</span> Kanban
+      <button class="nav-item" data-view="kanban" onclick="App.switchView('kanban')" aria-label="Kanban board view">
+        <span class="nav-icon" aria-hidden="true">⊞</span> Kanban
       </button>
 
-      <div class="divider" style="margin:10px 0"></div>
+      <div class="divider" style="margin:10px 0" role="separator"></div>
       <div class="nav-section-label">Manage</div>
 
-      <button class="nav-item" data-view="settings" onclick="App.switchView('settings')">
-        <span class="nav-icon">⚙</span> Settings
+      <button class="nav-item" data-view="settings" onclick="App.switchView('settings')" aria-label="Settings">
+        <span class="nav-icon" aria-hidden="true">⚙</span> Settings
       </button>
 
-      <div class="divider" style="margin:10px 0"></div>
+      <div class="divider" style="margin:10px 0" role="separator"></div>
       <div class="nav-section-label">Support</div>
 
-      <button class="nav-item" data-view="help" onclick="App.switchView('help')">
-        <span class="nav-icon">?</span> Help
+      <button class="nav-item" data-view="help" onclick="App.switchView('help')" aria-label="Help">
+        <span class="nav-icon" aria-hidden="true">?</span> Help
       </button>
-      <button class="nav-item" data-view="about" onclick="App.switchView('about')">
-        <span class="nav-icon">ℹ</span> About
+      <button class="nav-item" data-view="about" onclick="App.switchView('about')" aria-label="About">
+        <span class="nav-icon" aria-hidden="true">ℹ</span> About
       </button>
     </nav>
 
@@ -1661,7 +1696,9 @@ tr.overdue td.td-name { color: var(--red); }
                 <button class="btn btn-secondary" onclick="Storage.exportHTML()">↓ Save as self-contained HTML</button>
                 <button class="btn btn-secondary" onclick="Storage.exportFile()">↑ Export backup snapshot (.labwip)</button>
                 <button class="btn btn-secondary" onclick="Storage.triggerImport()">↓ Import .labwip file</button>
-                <button class="btn btn-secondary" onclick="Storage.exportCSV()">↑ Export CSV</button>
+                <button class="btn btn-secondary" onclick="Storage.exportCSV()" title="Spreadsheet view only — re-import via .labwip">↑ Export CSV</button>
+                <button class="btn btn-secondary" onclick="Storage.exportXLS()" title="Excel/LibreOffice Calc (.xls)">↑ Export Excel (.xls)</button>
+                <button class="btn btn-secondary" onclick="Storage.printPDF()" title="Opens browser print dialog — use 'Save as PDF'">🖨 Print / Save as PDF</button>
                 <div class="divider"></div>
                 <button class="btn btn-danger" onclick="Settings.clearAllData()">⚠ Clear All Data</button>
               </div>
@@ -1800,7 +1837,14 @@ tr.overdue td.td-name { color: var(--red); }
               <p><em>Removing an option does not modify existing tasks</em> — tasks retain their values; the removed item just no longer appears in the dropdown for new tasks.</p>
               <p><strong>Autosave interval:</strong> set 1–60 minutes. Set to 0 to disable periodic saves (save-on-change still works).</p>
               <p><strong>Theme:</strong> Dark (default) or Light. Persisted across sessions.</p>
-              <p><strong>Data Management:</strong> Export CSV (one-way, for spreadsheets), Export .labwip (backup/transfer), Import .labwip, Clear All Data.</p>
+              <p><strong>Data Management:</strong></p>
+              <ul>
+                <li><strong>Export CSV</strong> — spreadsheet-friendly view, export only (no import path).</li>
+                <li><strong>Export Excel (.xls)</strong> — SpreadsheetML file, opens in Excel and LibreOffice Calc.</li>
+                <li><strong>Print / Save as PDF</strong> — opens the browser print dialog; choose "Save as PDF" in the destination picker.</li>
+                <li><strong>Export .labwip</strong> — full backup/transfer format; use Import to restore.</li>
+                <li><strong>Clear All Data</strong> — irreversible; clears localStorage and resets all tasks and settings.</li>
+              </ul>
             </div>
           </div>
 
@@ -1831,7 +1875,7 @@ tr.overdue td.td-name { color: var(--red); }
               <img id="about-logo" src="" alt="WIP Flow" style="display:none">
               <div>
                 <div class="about-hero-name">WIP Flow</div>
-                <div class="about-hero-sub">Laboratory Work-in-Progress Tracker &nbsp;·&nbsp; v<span id="about-version">1.5.0</span></div>
+                <div class="about-hero-sub">Laboratory Work-in-Progress Tracker &nbsp;·&nbsp; v<span id="about-version">1.6.0</span></div>
               </div>
             </div>
             <div class="doc-body" style="border-top:1px solid var(--border);padding-top:14px">
@@ -1839,7 +1883,7 @@ tr.overdue td.td-name { color: var(--red); }
               <p>Designed for operational planning in multi-laboratory settings: tracking ongoing work, visualising timelines, coordinating staff allocation, and estimating realistic end dates based on workday calculations including weekends and holidays.</p>
               <dl class="doc-kv" style="margin-top:4px">
                 <dt>Author</dt><dd>Daniel Rosik</dd>
-                <dt>Version</dt><dd id="about-version-full">1.5.0</dd>
+                <dt>Version</dt><dd id="about-version-full">1.6.0</dd>
                 <dt>File</dt><dd><code>WIPflow.html</code> — single file, self-contained</dd>
                 <dt>Compatibility</dt><dd>Firefox · Chrome · Edge (Firefox primary target)</dd>
                 <dt>License</dt><dd>Internal use</dd>
@@ -1897,6 +1941,16 @@ tr.overdue td.td-name { color: var(--red); }
           <div class="card full">
             <div class="card-header"><span class="card-title">Changelog</span></div>
             <div class="doc-body">
+              <p><strong>v1.6</strong> — Accessibility, inline editing, export improvements</p>
+              <ul>
+                <li>Modal: Tab key now trapped within the dialog; Escape closes it</li>
+                <li>Nav: <code>aria-current="page"</code> tracks active view; all nav buttons have <code>aria-label</code></li>
+                <li>Kanban: columns are <code>role="region"</code> with labels; cards are <code>role="listitem"</code>; each card has a "Move to…" status selector as a keyboard-accessible drag alternative</li>
+                <li>Table: click Status cell to change status inline; click Progress cell to edit percentage inline (Enter/Escape to confirm/cancel)</li>
+                <li>Export Excel (.xls) — SpreadsheetML format, opens in Excel and LibreOffice without a build step</li>
+                <li>Print / Save as PDF — <code>window.print()</code> with <code>@media print</code> CSS that hides chrome and lays out the active view cleanly</li>
+                <li>CSV export tooltip clarifies it is one-way (no re-import path)</li>
+              </ul>
               <p><strong>v1.5</strong> — Typography &amp; rendering quality</p>
               <ul>
                 <li>Font switched to Inter across the entire UI; IBM Plex Mono retained only for code/monospace elements</li>
@@ -2074,7 +2128,7 @@ tr.overdue td.td-name { color: var(--red); }
 // ================================================================
 // CONSTANTS & DEFAULT CONFIG
 // ================================================================
-const APP_BASE_VERSION = '1.5';  // MAJOR.MINOR — increment manually
+const APP_BASE_VERSION = '1.6';  // MAJOR.MINOR — increment manually
 const APP_VERSION = APP_BASE_VERSION;
 const STORAGE_KEY = 'labwip_data';
 
@@ -2444,7 +2498,36 @@ const Storage = {
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    Toast.show('CSV exported', 'success');
+    Toast.show('CSV exported (spreadsheet view only — re-import via .labwip)', 'success');
+  },
+
+  exportXLS() {
+    if (!AppState.tasks.length) { Toast.show('No tasks to export', 'info'); return; }
+    const cols   = ['name','lab','person','status','priority','startDate','endDate','workdays','alloc','progress','tags','notes'];
+    const labels = ['Name','Lab','Person','Status','Priority','Start Date','End Date','Workdays','Alloc %','Progress %','Tags','Notes'];
+    const numCols = new Set(['workdays','alloc','progress']);
+    const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const headerRow = `<Row>${labels.map(h=>`<Cell><Data ss:Type="String">${esc(h)}</Data></Cell>`).join('')}</Row>`;
+    const dataRows  = AppState.tasks.map(t =>
+      `<Row>${cols.map(c=>{
+        const v = t[c]!=null ? t[c] : '';
+        const type = numCols.has(c) ? 'Number' : 'String';
+        return `<Cell><Data ss:Type="${type}">${esc(v)}</Data></Cell>`;
+      }).join('')}</Row>`
+    ).join('\n    ');
+    const xml = `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Tasks"><Table>${headerRow}${dataRows}</Table></Worksheet></Workbook>`;
+    const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `wipflow-${new Date().toISOString().slice(0,10)}.xls`;
+    a.style.display = 'none';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    Toast.show('Excel file downloaded', 'success');
+  },
+
+  printPDF() {
+    window.print();
   },
 
   triggerImport() {
@@ -2528,7 +2611,10 @@ const App = {
 
     // Update sidebar nav items
     document.querySelectorAll('.nav-item').forEach(el => {
-      el.classList.toggle('active', el.dataset.view === view);
+      const isActive = el.dataset.view === view;
+      el.classList.toggle('active', isActive);
+      if (isActive) el.setAttribute('aria-current', 'page');
+      else          el.removeAttribute('aria-current');
     });
 
     // Show/hide panels
@@ -2666,11 +2752,39 @@ const TaskModal = {
     // Show
     document.getElementById('modal-overlay').classList.add('open');
     document.getElementById('f-name').focus();
+    this._trapFocus();
   },
 
   close() {
+    this._releaseFocus();
     document.getElementById('modal-overlay').classList.remove('open');
     this._editId = null;
+  },
+
+  _trapFocus() {
+    const modal = document.getElementById('modal');
+    const sel = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const getFocusable = () => Array.from(modal.querySelectorAll(sel)).filter(el => !el.closest('[style*="display:none"]'));
+    this._trapFn = (e) => {
+      if (e.key !== 'Tab') return;
+      const els = getFocusable();
+      if (!els.length) return;
+      const first = els[0], last = els[els.length - 1];
+      if (e.shiftKey ? document.activeElement === first : document.activeElement === last) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      }
+    };
+    this._escFn = (e) => { if (e.key === 'Escape') this.close(); };
+    document.addEventListener('keydown', this._trapFn);
+    document.addEventListener('keydown', this._escFn);
+  },
+
+  _releaseFocus() {
+    if (this._trapFn) document.removeEventListener('keydown', this._trapFn);
+    if (this._escFn)  document.removeEventListener('keydown', this._escFn);
+    this._trapFn = null;
+    this._escFn  = null;
   },
 
   save() {
@@ -3159,7 +3273,9 @@ const TableView = {
         <td class="td-name">${escHtml(t.name||'')}</td>
         <td>${escHtml(t.lab||'')}</td>
         <td>${personCell}</td>
-        <td><span class="${statusBadgeClass(t.status)}">${escHtml(t.status||'')}</span></td>
+        <td class="td-inline-edit" title="Click to change status" onclick="event.stopPropagation();TableView.editStatus('${t.id}',this)">
+          <span class="${statusBadgeClass(t.status)}">${escHtml(t.status||'')}</span>
+        </td>
         <td><span class="${priorityBadgeClass(t.priority)}">${escHtml(t.priority||'')}</span></td>
         <td class="td-mono">${t.startDate||'—'}</td>
         <td class="td-mono" style="${overdue?'color:var(--red)':''}">
@@ -3167,7 +3283,7 @@ const TableView = {
         </td>
         <td class="td-mono">${t.workdays||'—'}</td>
         <td class="td-mono">${t.alloc!=null?t.alloc+'%':'—'}</td>
-        <td style="min-width:120px">${progBar}</td>
+        <td class="td-inline-edit" title="Click to edit progress" style="min-width:120px" onclick="event.stopPropagation();TableView.editProgress('${t.id}',this)">${progBar}</td>
         <td style="max-width:160px">${tags}</td>
         <td onclick="event.stopPropagation();TaskModal.open('${t.id}')" style="color:var(--text-3);text-align:center">✎</td>
       </tr>`;
@@ -3179,6 +3295,63 @@ const TableView = {
     const sortInfo = document.getElementById('table-sort-info');
     if (sortInfo && this.sortCol)
       sortInfo.textContent = `Sorted by ${this.sortCol} (${this.sortDir})`;
+  },
+
+  editStatus(taskId, td) {
+    const task = AppState.getTask(taskId);
+    if (!task) return;
+    const sel = document.createElement('select');
+    sel.className = 'form-control';
+    sel.style.cssText = 'font-size:12px;padding:2px 6px;height:auto;min-width:110px';
+    sel.setAttribute('aria-label', 'Change status');
+    AppState.settings.statuses.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s; o.textContent = s;
+      if (s === task.status) o.selected = true;
+      sel.appendChild(o);
+    });
+    td.innerHTML = '';
+    td.appendChild(sel);
+    sel.focus();
+    const commit = () => {
+      if (sel.value !== task.status) {
+        task.status = sel.value;
+        task.modified = new Date().toISOString();
+        Storage.markDirty();
+      }
+      App.refresh();
+    };
+    sel.addEventListener('change', commit);
+    sel.addEventListener('blur',   () => App.refresh());
+    sel.addEventListener('keydown', e => { if (e.key === 'Escape') App.refresh(); });
+  },
+
+  editProgress(taskId, td) {
+    const task = AppState.getTask(taskId);
+    if (!task) return;
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.min = 0; inp.max = 100; inp.step = 5;
+    inp.value = task.progress || 0;
+    inp.className = 'form-control';
+    inp.style.cssText = 'font-size:12px;padding:2px 6px;height:auto;width:70px';
+    inp.setAttribute('aria-label', 'Progress percentage');
+    td.innerHTML = '';
+    td.appendChild(inp);
+    inp.select();
+    const commit = () => {
+      const val = Math.max(0, Math.min(100, parseInt(inp.value) || 0));
+      if (val !== (task.progress || 0)) {
+        task.progress = val;
+        task.modified = new Date().toISOString();
+        Storage.markDirty();
+      }
+      App.refresh();
+    };
+    inp.addEventListener('blur', commit);
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      if (e.key === 'Escape') App.refresh();
+    });
   }
 };
 
@@ -3215,16 +3388,17 @@ const KanbanView = {
         });
       return `
         <div class="kanban-col" data-status="${escHtml(status)}"
+          role="region" aria-label="${escHtml(status)} (${colTasks.length} task${colTasks.length!==1?'s':''})"
           ondragover="event.preventDefault()"
           ondragenter="this.classList.add('drag-over')"
           ondragleave="if(!event.relatedTarget||!this.contains(event.relatedTarget))this.classList.remove('drag-over')"
           ondrop="KanbanView.onDrop(event,'${escHtml(status)}',this)">
           <div class="kanban-col-header">
-            <span class="dot" style="background:${getStatusColor(status)}"></span>
+            <span class="dot" style="background:${getStatusColor(status)}" aria-hidden="true"></span>
             <span class="kanban-col-title">${escHtml(status)}</span>
-            <span class="kanban-col-count">${colTasks.length}</span>
+            <span class="kanban-col-count" aria-hidden="true">${colTasks.length}</span>
           </div>
-          <div class="kanban-col-body">
+          <div class="kanban-col-body" role="list" aria-label="${escHtml(status)} tasks">
             ${colTasks.map(t => this._cardHtml(t, today)).join('')}
           </div>
         </div>`;
@@ -3238,14 +3412,19 @@ const KanbanView = {
     const tags     = (t.tags||'').split(',').filter(Boolean).slice(0, 3)
       .map(tag => `<span class="tag-chip" style="font-size:10px;padding:1px 5px">${escHtml(tag.trim())}</span>`)
       .join('');
+    const statusOpts = AppState.settings.statuses.map(s =>
+      `<option value="${escHtml(s)}"${s===t.status?' selected':''}>${escHtml(s)}</option>`
+    ).join('');
     return `
       <div class="kanban-card${overdue ? ' kanban-card-overdue' : ''}"
+        role="listitem"
+        aria-label="${escHtml(t.name||'')}${overdue ? ', overdue' : ''}"
         style="border-left-color:${priColor}"
         draggable="true"
         ondragstart="KanbanView.onDragStart(event,'${t.id}')"
         onclick="TaskModal.open('${t.id}')">
         <div class="kc-header">
-          <span class="dot" style="background:${priColor};margin-top:3px;flex-shrink:0"></span>
+          <span class="dot" style="background:${priColor};margin-top:3px;flex-shrink:0" aria-hidden="true"></span>
           <span class="kc-name">${escHtml(t.name||'')}</span>
         </div>
         <div class="kc-meta">
@@ -3255,7 +3434,24 @@ const KanbanView = {
         ${t.endDate ? `<div class="kc-date${overdue ? ' kc-overdue' : ''}">${t.endDate}${overdue ? ' ⚠' : ''}</div>` : ''}
         ${tags ? `<div class="kc-tags">${tags}</div>` : ''}
         <div class="kc-prog-bar"><div class="kc-prog-fill" style="width:${prog}%"></div></div>
+        <div class="kc-move" onclick="event.stopPropagation()" title="Move to…">
+          <select aria-label="Move ${escHtml(t.name||'')} to status"
+            onchange="KanbanView.moveCard('${t.id}',this.value)"
+            onclick="event.stopPropagation()">
+            ${statusOpts}
+          </select>
+        </div>
       </div>`;
+  },
+
+  moveCard(taskId, newStatus) {
+    const task = AppState.getTask(taskId);
+    if (!task || task.status === newStatus) return;
+    task.status = newStatus;
+    task.modified = new Date().toISOString();
+    Storage.markDirty();
+    App.refresh();
+    Toast.show(`Moved to "${newStatus}"`, 'success');
   },
 
   onDragStart(event, taskId) {
