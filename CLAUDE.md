@@ -27,7 +27,7 @@ The entire application lives in `WIPflow.html` (~3 900 lines), structured as a s
 - **`WorkCalendar`** — Date arithmetic: `isWorkday`, `calcEndDate(startStr, workdays, allocPct)`, `fmt`, `parse`. Skips weekends and holidays from `AppState.settings.holidays`.
 - **`AppState`** — In-memory store: `tasks[]`, `settings{}`. CRUD via `saveTask(data)`, `deleteTask(id)`, `getTask(id)`, `getFilteredTasks(filters, sortCol, sortDir)`, serialised via `toJSON/fromJSON`.
 - **`Storage`** — Persistence: `save()` writes to localStorage + DOM tag; `exportHTML()` downloads a versioned self-contained file; `exportFile()` downloads a `.labwip` JSON; `markDirty()` debounces a save by 400 ms.
-- **`App`** — Lifecycle: `init()`, `refresh()`, `switchView(name)`, autosave timer. `refresh()` re-renders the active view only.
+- **`App`** — Lifecycle: `init()`, `refresh()`, `switchView(name)`, autosave timer. `refresh()` re-renders the active view only — it does NOT call `markDirty()`.
 - **`TaskModal`** — Create/edit dialog. `open(taskId?)` populates from `AppState.getTask`; `save()` captures `wasEdit` before `close()`, then calls `AppState.saveTask`, `Storage.markDirty()`, and `App.refresh()`.
 - **`Dashboard`** — Canvas-based KPI charts. Uses `ResizeObserver` to redraw on resize. Shows empty state when no tasks exist.
 - **`TableView`** — Sortable/filterable `<table>`. Filters held in `TableView._filters`.
@@ -70,7 +70,7 @@ Version format: `MAJOR.MINOR.SAVE`
 - **MINOR** — Developer edits `APP_BASE_VERSION`. Use for bug fixes and small improvements.
 - **SAVE** — Incremented automatically each time the user clicks "Save as HTML".
 
-`APP_BASE_VERSION` is a constant near the top of the JS section (e.g. `const APP_BASE_VERSION = '1.4';`).
+`APP_BASE_VERSION` is a constant near the top of the JS section (e.g. `const APP_BASE_VERSION = '1.5';`).
 `saveVersion` lives in `AppState.settings` and persists in localStorage and embedded data.
 
 **Rule of thumb:** bump MINOR when shipping a fix or small feature; bump MAJOR for breaking changes.

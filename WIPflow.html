@@ -27,7 +27,8 @@
   - Charts       : Canvas-based mini charts
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* ================================================================
    CSS CUSTOM PROPERTIES — Design tokens
@@ -60,7 +61,7 @@
   --shadow-lg:  0 8px 32px rgba(0,0,0,0.5);
   --radius:     6px;
   --radius-lg:  10px;
-  --font:       'IBM Plex Sans', system-ui, sans-serif;
+  --font:       'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --mono:       'IBM Plex Mono', 'Courier New', monospace;
   --sidebar-w:  220px;
   --header-h:   52px;
@@ -418,9 +419,9 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 }
 
 .card-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  font-family: var(--mono);
+  font-family: var(--font);
   letter-spacing: 0.02em;
   color: var(--text-2);
   text-transform: uppercase;
@@ -454,17 +455,17 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 
 .kpi-label {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.06em;
   color: var(--text-3);
-  font-family: var(--mono);
+  font-family: var(--font);
 }
 
 .kpi-value {
   font-size: 32px;
-  font-weight: 300;
-  font-family: var(--mono);
+  font-weight: 500;
+  font-family: var(--font);
   line-height: 1;
   color: var(--text);
 }
@@ -1258,7 +1259,7 @@ tr.overdue td.td-name { color: var(--red); }
       <img class="logo-icon" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJiZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMDgyYTYzIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iNTUlIiBzdG9wLWNvbG9yPSIjMGIzZjhlIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzA2MjE0YSIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KCiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Imdsb3NzIiB4MT0iMCIgeTE9IjAiIHgyPSIwIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iMC4yMiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iMCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KCiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImN5YW5CYXIiIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIwIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzQyY2ZmZiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM3MmVjZmYiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJ5ZWxsb3dCYXIiIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIwIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2ZmYmYyZiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNmZmUwNjYiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJwdXJwbGVCYXIiIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIwIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzljNWNmZiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNjODkyZmYiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CgogICAgPGZpbHRlciBpZD0ic2hhZG93IiB4PSItMzAlIiB5PSItMzAlIiB3aWR0aD0iMTYwJSIgaGVpZ2h0PSIxNjAlIj4KICAgICAgPGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjE4IiBzdGREZXZpYXRpb249IjIwIiBmbG9vZC1vcGFjaXR5PSIwLjM1Ii8+CiAgICA8L2ZpbHRlcj4KCiAgICA8ZmlsdGVyIGlkPSJpbm5lckdsb3ciPgogICAgICA8ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMCIgc3RkRGV2aWF0aW9uPSI4IiBmbG9vZC1jb2xvcj0iI2ZmZmZmZiIgZmxvb2Qtb3BhY2l0eT0iMC4xNSIvPgogICAgPC9maWx0ZXI+CgogICAgPGZpbHRlciBpZD0iYmFyU2hhZG93Ij4KICAgICAgPGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjgiIHN0ZERldmlhdGlvbj0iOCIgZmxvb2Qtb3BhY2l0eT0iMC4zNSIvPgogICAgPC9maWx0ZXI+CiAgPC9kZWZzPgoKICA8ZWxsaXBzZSBjeD0iNTEyIiBjeT0iOTYwIiByeD0iMzYwIiByeT0iMzYiIGZpbGw9IiMwMDAwMDAiIG9wYWNpdHk9IjAuMjIiLz4KCiAgPGcgZmlsdGVyPSJ1cmwoI3NoYWRvdykiPgogICAgPHJlY3QgeD0iNDAiIHk9IjQwIiB3aWR0aD0iOTQ0IiBoZWlnaHQ9Ijk0NCIgcng9IjEyMCIKICAgICAgICAgIGZpbGw9InVybCgjYmcpIgogICAgICAgICAgc3Ryb2tlPSIjMmE1Y2E4IgogICAgICAgICAgc3Ryb2tlLXdpZHRoPSI2Ii8+CgogICAgPHJlY3QgeD0iNDgiIHk9IjQ4IiB3aWR0aD0iOTI4IiBoZWlnaHQ9IjkyOCIgcng9IjExMiIKICAgICAgICAgIGZpbGw9Im5vbmUiCiAgICAgICAgICBzdHJva2U9IiM3Y2I4ZmYiCiAgICAgICAgICBzdHJva2Utb3BhY2l0eT0iMC4xNSIKICAgICAgICAgIHN0cm9rZS13aWR0aD0iMiIvPgoKICAgIDxwYXRoIGQ9Ik00MCwxNjAKICAgICAgICAgICAgIFE1MTIsNDAgOTg0LDE0MAogICAgICAgICAgICAgTDk4NCw0MAogICAgICAgICAgICAgTDQwLDQwIFoiCiAgICAgICAgICBmaWxsPSJ1cmwoI2dsb3NzKSIvPgogIDwvZz4KCiAgPCEtLSBHcmlkIC0tPgogIDxnIG9wYWNpdHk9IjAuMTAiIHN0cm9rZT0iIzlmYzhmZiIgc3Ryb2tlLXdpZHRoPSIyIj4KICAgIDxsaW5lIHgxPSIxODAiIHkxPSIzMjAiIHgyPSIxODAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSIyNDAiIHkxPSIzMjAiIHgyPSIyNDAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSIzMDAiIHkxPSIzMjAiIHgyPSIzMDAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSIzNjAiIHkxPSIzMjAiIHgyPSIzNjAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSI0MjAiIHkxPSIzMjAiIHgyPSI0MjAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSI0ODAiIHkxPSIzMjAiIHgyPSI0ODAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSI1NDAiIHkxPSIzMjAiIHgyPSI1NDAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSI2MDAiIHkxPSIzMjAiIHgyPSI2MDAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSI2NjAiIHkxPSIzMjAiIHgyPSI2NjAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSI3MjAiIHkxPSIzMjAiIHgyPSI3MjAiIHkyPSI4NjAiLz4KICAgIDxsaW5lIHgxPSI3ODAiIHkxPSIzMjAiIHgyPSI3ODAiIHkyPSI4NjAiLz4KCiAgICA8bGluZSB4MT0iMTUwIiB5MT0iNDIwIiB4Mj0iODYwIiB5Mj0iNDIwIi8+CiAgICA8bGluZSB4MT0iMTUwIiB5MT0iNTAwIiB4Mj0iODYwIiB5Mj0iNTAwIi8+CiAgICA8bGluZSB4MT0iMTUwIiB5MT0iNTgwIiB4Mj0iODYwIiB5Mj0iNTgwIi8+CiAgICA8bGluZSB4MT0iMTUwIiB5MT0iNjYwIiB4Mj0iODYwIiB5Mj0iNjYwIi8+CiAgICA8bGluZSB4MT0iMTUwIiB5MT0iNzQwIiB4Mj0iODYwIiB5Mj0iNzQwIi8+CiAgPC9nPgoKICA8dGV4dCB4PSIxNzAiIHk9IjMzMCIKICAgICAgICBmb250LWZhbWlseT0iU2Vnb2UgVUksIEFyaWFsLCBzYW5zLXNlcmlmIgogICAgICAgIGZvbnQtc2l6ZT0iMjUwIgogICAgICAgIGZvbnQtd2VpZ2h0PSI4MDAiCiAgICAgICAgZmlsbD0iI2ZmZmZmZiIKICAgICAgICBmaWx0ZXI9InVybCgjaW5uZXJHbG93KSI+V0lQPC90ZXh0PgoKICA8dGV4dCB4PSIxODUiIHk9IjUwMCIKICAgICAgICBmb250LWZhbWlseT0iU2Vnb2UgVUksIEFyaWFsLCBzYW5zLXNlcmlmIgogICAgICAgIGZvbnQtc2l6ZT0iMTEwIgogICAgICAgIGZvbnQtd2VpZ2h0PSI3MDAiCiAgICAgICAgZmlsbD0iIzY3ZGVmZiI+RmxvdzwvdGV4dD4KCiAgPGcgZmlsdGVyPSJ1cmwoI2JhclNoYWRvdykiPgogICAgPHJlY3QgeD0iNDcwIiB5PSI1MDAiIHdpZHRoPSIyMjAiIGhlaWdodD0iNTQiIHJ4PSIxNCIgZmlsbD0idXJsKCNjeWFuQmFyKSIvPgogICAgPHJlY3QgeD0iMjIwIiB5PSI1NzAiIHdpZHRoPSIyODAiIGhlaWdodD0iNTQiIHJ4PSIxNCIgZmlsbD0idXJsKCNjeWFuQmFyKSIvPgogICAgPHJlY3QgeD0iNTIwIiB5PSI2NDAiIHdpZHRoPSIyNjAiIGhlaWdodD0iNTQiIHJ4PSIxNCIgZmlsbD0idXJsKCN5ZWxsb3dCYXIpIi8+CiAgICA8cmVjdCB4PSI3MjAiIHk9IjczNSIgd2lkdGg9IjE4MCIgaGVpZ2h0PSI1NCIgcng9IjE0IiBmaWxsPSJ1cmwoI3B1cnBsZUJhcikiLz4KICA8L2c+CgogIDxsaW5lIHgxPSI3NzAiIHkxPSIzODUiIHgyPSI3NzAiIHkyPSI4MjAiCiAgICAgICAgc3Ryb2tlPSIjZjJmMmYyIgogICAgICAgIHN0cm9rZS13aWR0aD0iMTgiCiAgICAgICAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CgogIDxjaXJjbGUgY3g9Ijc3MCIgY3k9IjM4MCIgcj0iMzAiCiAgICAgICAgICBmaWxsPSIjZjdmN2Y3IgogICAgICAgICAgc3Ryb2tlPSIjZDBkMGQwIgogICAgICAgICAgc3Ryb2tlLXdpZHRoPSI0Ii8+Cjwvc3ZnPgo=" width="40" height="40" alt="WIP Flow">
       <div>
         <div class="logo-text">WIP Flow</div>
-        <div class="logo-sub">v<span id="version-display">1.4.0</span></div>
+        <div class="logo-sub">v<span id="version-display">1.5.0</span></div>
       </div>
     </div>
 
@@ -1772,7 +1773,7 @@ tr.overdue td.td-name { color: var(--red); }
                   <tr><td>SAVE</td><td>App (automatic)</td><td>Increments each time you click <strong>↓ Save as HTML</strong></td></tr>
                 </tbody>
               </table>
-              <p>The current version is shown in the sidebar below the logo. When you download a copy via <strong>↓ Save as HTML</strong>, the save counter increments and the filename includes the full version, e.g. <code>WIPflow_v1.4.3.html</code>. This means every exported file has a unique, monotonically increasing identifier — you can always tell which copy is newer just from the filename.</p>
+              <p>The current version is shown in the sidebar below the logo. When you download a copy via <strong>↓ Save as HTML</strong>, the save counter increments and the filename includes the full version, e.g. <code>WIPflow_v1.5.3.html</code>. This means every exported file has a unique, monotonically increasing identifier — you can always tell which copy is newer just from the filename.</p>
               <p>The save counter is stored in your data (not hardcoded), so it persists across sessions and survives file moves as long as you always start from the latest exported copy.</p>
               <p><strong>Tip:</strong> If you want to reset the save counter (e.g. after a fresh install), set <code>saveVersion</code> to 0 in the .labwip JSON file before importing.</p>
             </div>
@@ -1830,7 +1831,7 @@ tr.overdue td.td-name { color: var(--red); }
               <img id="about-logo" src="" alt="WIP Flow" style="display:none">
               <div>
                 <div class="about-hero-name">WIP Flow</div>
-                <div class="about-hero-sub">Laboratory Work-in-Progress Tracker &nbsp;·&nbsp; v<span id="about-version">1.4.0</span></div>
+                <div class="about-hero-sub">Laboratory Work-in-Progress Tracker &nbsp;·&nbsp; v<span id="about-version">1.5.0</span></div>
               </div>
             </div>
             <div class="doc-body" style="border-top:1px solid var(--border);padding-top:14px">
@@ -1838,7 +1839,7 @@ tr.overdue td.td-name { color: var(--red); }
               <p>Designed for operational planning in multi-laboratory settings: tracking ongoing work, visualising timelines, coordinating staff allocation, and estimating realistic end dates based on workday calculations including weekends and holidays.</p>
               <dl class="doc-kv" style="margin-top:4px">
                 <dt>Author</dt><dd>Daniel Rosik</dd>
-                <dt>Version</dt><dd id="about-version-full">1.4.0</dd>
+                <dt>Version</dt><dd id="about-version-full">1.5.0</dd>
                 <dt>File</dt><dd><code>WIPflow.html</code> — single file, self-contained</dd>
                 <dt>Compatibility</dt><dd>Firefox · Chrome · Edge (Firefox primary target)</dd>
                 <dt>License</dt><dd>Internal use</dd>
@@ -1896,6 +1897,15 @@ tr.overdue td.td-name { color: var(--red); }
           <div class="card full">
             <div class="card-header"><span class="card-title">Changelog</span></div>
             <div class="doc-body">
+              <p><strong>v1.5</strong> — Typography &amp; rendering quality</p>
+              <ul>
+                <li>Font switched to Inter across the entire UI; IBM Plex Mono retained only for code/monospace elements</li>
+                <li>Dashboard and Gantt canvas charts now render sharp on HiDPI/Retina displays (devicePixelRatio scaling)</li>
+                <li>Chart axis labels increased to 13 px (Inter 400), value labels to 13 px bold (Inter 600)</li>
+                <li>KPI card values: weight 300 → 500 for better legibility on dark backgrounds</li>
+                <li>Card section titles switched from mono to Inter 600 at 14 px</li>
+                <li>Chart label colour uses <code>--text</code> (lighter) for values and <code>--text-2</code> for axes, improving contrast</li>
+              </ul>
               <p><strong>v1.4</strong> — UX improvements, security fixes, light theme polish</p>
               <ul>
                 <li>Gantt: task panel stays fixed while scrolling horizontally; drag the panel border to resize it</li>
@@ -2064,7 +2074,7 @@ tr.overdue td.td-name { color: var(--red); }
 // ================================================================
 // CONSTANTS & DEFAULT CONFIG
 // ================================================================
-const APP_BASE_VERSION = '1.4';  // MAJOR.MINOR — increment manually
+const APP_BASE_VERSION = '1.5';  // MAJOR.MINOR — increment manually
 const APP_VERSION = APP_BASE_VERSION;
 const STORAGE_KEY = 'labwip_data';
 
@@ -2966,42 +2976,56 @@ const Dashboard = {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
     const container = canvas.parentElement;
-    // Use offsetWidth/offsetHeight which reflect actual rendered size
     const W = container.offsetWidth  || 280;
     const H = container.offsetHeight || 190;
-    if (W < 10 || H < 10) return; // Not laid out yet — ResizeObserver will retry
-    canvas.width  = W;
-    canvas.height = H;
-    const ctx = canvas.getContext('2d');
+    if (W < 10 || H < 10) return;
 
-    // Get CSS variable values
-    const style   = getComputedStyle(document.documentElement);
-    const textCol = style.getPropertyValue('--text-2').trim()   || '#8b949e';
-    const bgCol   = style.getPropertyValue('--bg-3').trim()     || '#21262d';
-    const borderC = style.getPropertyValue('--border').trim()   || '#30363d';
+    // HiDPI / devicePixelRatio support
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width  = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const style    = getComputedStyle(document.documentElement);
+    const textCol  = style.getPropertyValue('--text').trim()    || '#c9d1d9';
+    const labelCol = style.getPropertyValue('--text-2').trim()  || '#8b949e';
+    const borderC  = style.getPropertyValue('--border').trim()  || '#30363d';
+
+    const FONT_AXIS  = '400 13px Inter,system-ui,sans-serif';
+    const FONT_VALUE = '600 13px Inter,system-ui,sans-serif';
 
     const entries = Object.entries(counts).sort((a,b) => b[1]-a[1]);
-    if (!entries.length) { ctx.fillStyle = textCol; ctx.font = '12px IBM Plex Mono,monospace'; ctx.fillText('No data', 10, 20); return; }
+    if (!entries.length) {
+      ctx.fillStyle = labelCol;
+      ctx.font = FONT_AXIS;
+      ctx.fillText('No data', 10, 20);
+      return;
+    }
 
     const maxVal = Math.max(...entries.map(e=>e[1]), 1);
-    const pad    = { top:24, right:16, bottom:48, left:36 };
+    const pad    = { top:28, right:16, bottom:52, left:42 };
     const chartW = W - pad.left - pad.right;
     const chartH = H - pad.top  - pad.bottom;
 
     ctx.clearRect(0, 0, W, H);
 
-    // Horizontal grid lines
+    // Horizontal grid lines + y-axis labels
     ctx.strokeStyle = borderC;
     ctx.lineWidth = 1;
     for (let i = 0; i <= 4; i++) {
       const y = pad.top + chartH - (i/4)*chartH;
       ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W-pad.right, y); ctx.stroke();
-      ctx.fillStyle = textCol; ctx.font = '11px IBM Plex Mono,monospace'; ctx.textAlign='right';
-      ctx.fillText(Math.round(maxVal*(i/4)), pad.left-4, y+3);
+      ctx.fillStyle = labelCol;
+      ctx.font = FONT_AXIS;
+      ctx.textAlign = 'right';
+      ctx.fillText(Math.round(maxVal*(i/4)), pad.left-6, y+4);
     }
 
-    const barW   = Math.min(40, (chartW / entries.length) * 0.65);
-    const slotW  = chartW / entries.length;
+    const barW  = Math.min(44, (chartW / entries.length) * 0.65);
+    const slotW = chartW / entries.length;
 
     entries.forEach(([label, val], i) => {
       const x    = pad.left + i*slotW + (slotW-barW)/2;
@@ -3014,9 +3038,9 @@ const Dashboard = {
         color = style.getPropertyValue(color.slice(4,-1)).trim() || '#388bfd';
       }
 
-      // Bar
+      // Bar with rounded top
       ctx.fillStyle = color;
-      const r = Math.min(3, barW/2);
+      const r = Math.min(4, barW/2);
       ctx.beginPath();
       ctx.moveTo(x+r, y);
       ctx.lineTo(x+barW-r, y);
@@ -3028,18 +3052,17 @@ const Dashboard = {
       ctx.closePath();
       ctx.fill();
 
-      // Value label
+      // Value label above bar
       ctx.fillStyle = textCol;
-      ctx.font = '12px IBM Plex Mono,monospace';
+      ctx.font = FONT_VALUE;
       ctx.textAlign = 'center';
-      ctx.fillText(val, x+barW/2, y-4);
+      ctx.fillText(val, x+barW/2, y-5);
 
-      // X-axis label (truncate)
-      const maxLabelW = slotW - 4;
+      // X-axis category label
       const shortLabel = label.length > 10 ? label.slice(0,8)+'…' : label;
-      ctx.font = '11px IBM Plex Mono,monospace';
-      ctx.fillStyle = textCol;
-      ctx.fillText(shortLabel, x+barW/2, H-pad.bottom+14);
+      ctx.font = FONT_AXIS;
+      ctx.fillStyle = labelCol;
+      ctx.fillText(shortLabel, x+barW/2, H-pad.bottom+16);
     });
   }
 };
@@ -3511,7 +3534,7 @@ const Gantt = {
       if (d.getMonth() !== curMonth) {
         curMonth = d.getMonth();
         ctx.fillStyle = text1;
-        ctx.font = 'bold 10px IBM Plex Mono,monospace';
+        ctx.font = 'bold 11px Inter,sans-serif';
         ctx.textAlign = 'left';
         ctx.fillText(d.toLocaleString('en-SE', { month:'short', year:'numeric' }), x+2, 14);
         ctx.strokeStyle = border;
@@ -3527,16 +3550,16 @@ const Gantt = {
         ctx.fillStyle  = dayColor;
         ctx.textAlign  = 'center';
         // Day abbreviation (Mon/Tue/…)
-        ctx.font = '8px IBM Plex Mono,monospace';
+        ctx.font = '400 9px Inter,sans-serif';
         ctx.fillText(d.toLocaleString('en-GB', { weekday:'short' }), x + pd/2, 29);
         // Day number
-        ctx.font = '9px IBM Plex Mono,monospace';
+        ctx.font = '400 10px Inter,sans-serif';
         ctx.fillText(d.getDate(), x + pd/2, 40);
         // Holiday name (truncated)
         if (isHoliday) {
           const name = holidayMap[dateStr] || 'H';
           const maxChars = Math.floor((pd - 4) / 5.5);
-          ctx.font = 'bold 8px IBM Plex Mono,monospace';
+          ctx.font = '600 9px Inter,sans-serif';
           ctx.fillText(maxChars > 1 ? name.slice(0, maxChars) : 'H', x + pd/2, 49);
         }
       } else if (this.zoom === 'week') {
@@ -3545,7 +3568,7 @@ const Gantt = {
           ctx.lineWidth   = 1;
           ctx.beginPath(); ctx.moveTo(x, 20); ctx.lineTo(x, 50); ctx.stroke();
           ctx.fillStyle = text1;
-          ctx.font = '9px IBM Plex Mono,monospace';
+          ctx.font = '400 10px Inter,sans-serif';
           ctx.textAlign = 'left';
           ctx.fillText('W'+this._weekNum(d)+' '+d.getDate()+'/'+String(d.getMonth()+1).padStart(2,'0'), x+3, 42);
         }
@@ -3564,7 +3587,7 @@ const Gantt = {
           ctx.lineWidth   = 0.5;
           ctx.beginPath(); ctx.moveTo(x, 20); ctx.lineTo(x, 50); ctx.stroke();
           ctx.fillStyle = text1;
-          ctx.font = '9px IBM Plex Mono,monospace';
+          ctx.font = '400 10px Inter,sans-serif';
           ctx.textAlign = 'left';
           ctx.fillText(d.getDate(), x+2, 42);
         }
@@ -3674,7 +3697,7 @@ const Gantt = {
 
       // Label
       ctx.fillStyle = '#fff';
-      ctx.font = '10px IBM Plex Sans,sans-serif';
+      ctx.font = '500 11px Inter,sans-serif';
       ctx.textAlign = 'left';
       const label = t.name || '';
       const avail = barW - 8;
