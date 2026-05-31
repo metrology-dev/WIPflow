@@ -906,15 +906,14 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 /* ── DOC VIEWS (Help / About) ── */
 .doc-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 20px;
   align-items: start;
   width: 100%;
   max-width: 1100px;
-  margin: 0 auto;   /* centre Help & About at an identical width */
+  margin: 0 auto;
 }
-@media (max-width: 900px) { .doc-grid { grid-template-columns: 1fr; } }
-.doc-grid .card { grid-column: 1; }
+.doc-grid .card { grid-column: 1 / -1; }
 .doc-grid .card.full { grid-column: 1 / -1; }
 
 .doc-body {
@@ -1179,8 +1178,8 @@ tr.overdue td.td-name { color: var(--red); }
   align-items: stretch;
 }
 .kanban-col {
-  width: 260px;
-  flex-shrink: 0;
+  flex: 1 1 220px;
+  min-width: 200px;
   min-height: 100%;
   display: flex;
   flex-direction: column;
@@ -1266,7 +1265,9 @@ tr.overdue td.td-name { color: var(--red); }
    PRINT / PDF
    ================================================================ */
 @media print {
-  #sidebar, #topbar, #gantt-tooltip,
+  @page { size: landscape; margin: 15mm; }
+
+  #sidebar, #topbar, #gantt-tooltip, #print-options-overlay,
   #table-toolbar, #gantt-toolbar, .kanban-toolbar,
   .kc-move, .btn, #autosave-indicator,
   #gantt-resize-handle { display: none !important; }
@@ -1274,14 +1275,24 @@ tr.overdue td.td-name { color: var(--red); }
   body, html { background: #fff !important; color: #000 !important; }
   #main { margin: 0 !important; }
   #view-area { padding: 0 !important; overflow: visible !important; }
+
+  /* Table is always printed */
   .view-panel { display: none !important; }
-  .view-panel.active { display: block !important; overflow: visible !important; }
+  #view-table { display: block !important; overflow: visible !important; }
+  #table-wrap { overflow: visible !important; }
+  table { width: 100% !important; font-size: 11px !important; border-collapse: collapse !important; }
+  th, td { padding: 4px 6px !important; border: 1px solid #ccc !important; }
+
+  /* Optional extra views based on body data attributes set by printPDF() */
+  body[data-print-dash="1"] #view-dashboard { display: block !important; overflow: visible !important; page-break-before: always; }
+  body[data-print-gantt="1"] #view-gantt { display: block !important; overflow: visible !important; page-break-before: always; }
+  body[data-print-gantt="1"] #gantt-body-outer,
+  body[data-print-gantt="1"] #gantt-body-wrap { overflow: visible !important; }
 
   .card { border: 1px solid #ccc !important; box-shadow: none !important; break-inside: avoid; }
   .card-title { color: #000 !important; }
   tr { break-inside: avoid; }
-  #gantt-body-outer, #gantt-body-wrap { overflow: visible !important; }
-  canvas { max-width: 100%; }
+  canvas { max-width: 100%; height: auto !important; }
 }
 </style>
 </head>
@@ -1762,7 +1773,7 @@ tr.overdue td.td-name { color: var(--red); }
             <div class="doc-body">
               <p><strong>Dashboard</strong> — KPI summary cards, status/priority/lab bar charts, staff workload, and upcoming deadlines (next 14 days). Charts resize with the window.</p>
               <p><strong>Table</strong> — Sortable, filterable grid. Click any column header to sort; click again to reverse. Use the filter dropdowns and the search box to narrow results. Click any row to edit.</p>
-              <p><strong>Gantt</strong> — Canvas timeline with three zoom levels: <em>Day</em>, <em>Week</em>, and <em>Month</em>. Hover over a bar for a full tooltip. Click <strong>Today</strong> to scroll to the current date. Bar colour = priority; fill opacity = progress.</p>
+              <p><strong>Gantt</strong> — Canvas timeline with four zoom levels: <em>Day</em>, <em>Week</em>, <em>Month</em>, and <em>Year</em>. Year zoom auto-scales to fill the available area. Hover over a bar for a full tooltip. Click <strong>Today</strong> to scroll to the current date. Drag the panel divider to resize the task list. Bar colour = priority; fill level = progress.</p>
               <p><strong>Kanban</strong> — Cards grouped by status column. Drag a card to a different column to change its status. Filter by lab or person using the dropdowns above the board.</p>
             </div>
           </div>
@@ -1840,8 +1851,8 @@ tr.overdue td.td-name { color: var(--red); }
               <p><strong>Data Management:</strong></p>
               <ul>
                 <li><strong>Export CSV</strong> — spreadsheet-friendly view, export only (no import path).</li>
-                <li><strong>Export Excel (.xls)</strong> — SpreadsheetML file, opens in Excel and LibreOffice Calc.</li>
-                <li><strong>Print / Save as PDF</strong> — opens the browser print dialog; choose "Save as PDF" in the destination picker.</li>
+                <li><strong>Export Excel (.xls)</strong> — SpreadsheetML file, opens directly in Excel and LibreOffice Calc without format warnings.</li>
+                <li><strong>Print / Save as PDF</strong> — opens a dialog where you choose which views to include (task table is always included; Dashboard and Gantt are optional). Prints in landscape. Choose "Save as PDF" in the browser print dialog to export as PDF.</li>
                 <li><strong>Export .labwip</strong> — full backup/transfer format; use Import to restore.</li>
                 <li><strong>Clear All Data</strong> — irreversible; clears localStorage and resets all tasks and settings.</li>
               </ul>
@@ -1941,6 +1952,16 @@ tr.overdue td.td-name { color: var(--red); }
           <div class="card full">
             <div class="card-header"><span class="card-title">Changelog</span></div>
             <div class="doc-body">
+              <p><strong>v1.7</strong> — Layout, alignment, and export improvements</p>
+              <ul>
+                <li>Export Excel (.xls): added <code>mso-application</code> processing instruction and UTF-8 BOM — Excel no longer shows a format-mismatch warning</li>
+                <li>Print / Save as PDF: replaced single <code>window.print()</code> call with a dialog that lets you choose to include Dashboard and/or Gantt chart; prints in landscape with a properly formatted full-width table</li>
+                <li>Gantt: fixed weekend/holiday column alignment between timeline header and chart body (left header now accounts for the resize handle width)</li>
+                <li>Gantt: Year zoom now fills the available chart area; month labels are skipped when columns are too narrow to avoid overlap</li>
+                <li>Dashboard: Status Distribution / By Priority / By Laboratory chart widths are now proportional to the number of bars in each chart</li>
+                <li>Kanban: columns now grow to fill the full available width instead of being fixed at 260 px</li>
+                <li>Help &amp; About: cards now span the full content width (1100 px max) instead of being constrained to half the grid</li>
+              </ul>
               <p><strong>v1.6</strong> — Accessibility, inline editing, export improvements</p>
               <ul>
                 <li>Modal: Tab key now trapped within the dialog; Escape closes it</li>
@@ -2128,7 +2149,7 @@ tr.overdue td.td-name { color: var(--red); }
 // ================================================================
 // CONSTANTS & DEFAULT CONFIG
 // ================================================================
-const APP_BASE_VERSION = '1.6';  // MAJOR.MINOR — increment manually
+const APP_BASE_VERSION = '1.7';  // MAJOR.MINOR — increment manually
 const APP_VERSION = APP_BASE_VERSION;
 const STORAGE_KEY = 'labwip_data';
 
@@ -2515,8 +2536,8 @@ const Storage = {
         return `<Cell><Data ss:Type="${type}">${esc(v)}</Data></Cell>`;
       }).join('')}</Row>`
     ).join('\n    ');
-    const xml = `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Tasks"><Table>${headerRow}${dataRows}</Table></Worksheet></Workbook>`;
-    const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Tasks"><Table>${headerRow}${dataRows}</Table></Worksheet></Workbook>`;
+    const blob = new Blob(['﻿' + xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href = url; a.download = `wipflow-${new Date().toISOString().slice(0,10)}.xls`;
@@ -2527,7 +2548,62 @@ const Storage = {
   },
 
   printPDF() {
-    window.print();
+    const overlay = document.createElement('div');
+    overlay.id = 'print-options-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;display:flex;align-items:center;justify-content:center';
+    overlay.innerHTML = `
+      <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:24px 28px;max-width:400px;width:calc(100% - 32px)">
+        <div style="font-size:15px;font-weight:600;margin-bottom:8px">Print / Save as PDF</div>
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">Prints in landscape. The task table is always included.</p>
+        <label style="display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="po-dash" style="accent-color:var(--accent)"> Include Dashboard (KPI &amp; charts)
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;margin-bottom:20px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="po-gantt" style="accent-color:var(--accent)"> Include Gantt chart
+        </label>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn btn-ghost" id="po-cancel">Cancel</button>
+          <button class="btn btn-primary" id="po-print">🖨 Print</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const closeDialog = () => overlay.remove();
+    document.getElementById('po-cancel').onclick = closeDialog;
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeDialog(); });
+
+    document.getElementById('po-print').onclick = () => {
+      const incDash  = document.getElementById('po-dash').checked;
+      const incGantt = document.getElementById('po-gantt').checked;
+      closeDialog();
+
+      const prevView = App.currentView;
+      document.body.dataset.printDash  = incDash  ? '1' : '0';
+      document.body.dataset.printGantt = incGantt ? '1' : '0';
+
+      // Sequence: pre-render selected canvases, then switch to table and print
+      const views = [];
+      if (incDash)  views.push('dashboard');
+      if (incGantt) views.push('gantt');
+      views.push('table');
+
+      let step = 0;
+      const advance = () => {
+        if (step < views.length) {
+          App.switchView(views[step++]);
+          setTimeout(advance, 120);
+        } else {
+          window.print();
+          setTimeout(() => {
+            App.switchView(prevView);
+            delete document.body.dataset.printDash;
+            delete document.body.dataset.printGantt;
+          }, 600);
+        }
+      };
+      advance();
+    };
   },
 
   triggerImport() {
@@ -3063,6 +3139,15 @@ const Dashboard = {
 
   _redrawCharts() {
     if (!this._chartData) return;
+    // Proportional widths: each chart column is sized by its bar count
+    const nStatus   = Math.max(1, Object.keys(this._chartData.status).length);
+    const nPriority = Math.max(1, Object.keys(this._chartData.priority).length);
+    const nLab      = Math.max(1, Object.keys(this._chartData.lab).length);
+    const tripleGrid = document.querySelector('.dash-grid.triple');
+    if (tripleGrid) {
+      tripleGrid.style.gridTemplateColumns = `${nStatus}fr ${nPriority}fr ${nLab}fr`;
+      void tripleGrid.offsetWidth; // force layout reflow so container widths are current
+    }
     this._drawBarChart('chart-status',   this._chartData.status,   s => getStatusColor(s));
     this._drawBarChart('chart-priority', this._chartData.priority, p => getPriorityColor(p));
     this._drawBarChart('chart-lab',      this._chartData.lab,      () => 'var(--accent)');
@@ -3594,6 +3679,14 @@ const Gantt = {
     this._startDate = minDate;
     this._totalDays = WorkCalendar.daysBetween(minDate, maxDate) + 1;
 
+    // For year zoom: scale pixelsPerDay so the chart fills the available width
+    if (this.zoom === 'year') {
+      const bodyWrap = document.getElementById('gantt-body-wrap');
+      if (bodyWrap && bodyWrap.clientWidth > 0) {
+        this.pixelsPerDay = Math.max(this.ZOOM_PX.year, bodyWrap.clientWidth / this._totalDays);
+      }
+    }
+
     const canvasW  = this._totalDays * this.pixelsPerDay;
     const canvasH  = tasks.length * this.ROW_HEIGHT;
 
@@ -3605,11 +3698,14 @@ const Gantt = {
     leftEl.style.width = w;
     leftEl.style.minWidth = w;
 
-    // Size left header
+    // Size left header: add 5px for the resize handle so timeline canvas
+    // starts at the same horizontal offset as the chart canvas
+    const HANDLE_W = 5;
     const leftHeader = document.getElementById('gantt-left-header');
     if (leftHeader) {
-      leftHeader.style.width = w;
-      leftHeader.style.minWidth = w;
+      const wh = (this.LEFT_WIDTH + HANDLE_W) + 'px';
+      leftHeader.style.width = wh;
+      leftHeader.style.minWidth = wh;
     }
 
     // Draw task list
@@ -3718,6 +3814,7 @@ const Gantt = {
 
     // Pass 2 — month labels (top row) and day/week/month markers (bottom row)
     let curMonth = -1;
+    let lastMonthLabelX = -Infinity;
     for (let i = 0; i < tot; i++) {
       const d = new Date(sd);
       d.setDate(sd.getDate() + i);
@@ -3729,13 +3826,17 @@ const Gantt = {
       // Month separator
       if (d.getMonth() !== curMonth) {
         curMonth = d.getMonth();
-        ctx.fillStyle = text1;
-        ctx.font = 'bold 11px Inter,sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(d.toLocaleString('en-SE', { month:'short', year:'numeric' }), x+2, 14);
         ctx.strokeStyle = border;
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 50); ctx.stroke();
+        // Only draw label if enough room since the last one (avoid overlap)
+        if (x - lastMonthLabelX >= 48) {
+          ctx.fillStyle = text1;
+          ctx.font = 'bold 11px Inter,sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(d.toLocaleString('en-SE', { month:'short', year:'numeric' }), x+2, 14);
+          lastMonthLabelX = x;
+        }
       }
 
       if (this.zoom === 'day') {
@@ -3993,16 +4094,18 @@ const Gantt = {
     if (!handle || handle._resizeBound) return;
     handle._resizeBound = true;
     let startX = 0, startWidth = 0;
+    const HANDLE_W = 5;
     const onMove = (e) => {
       const dx = (e.clientX || e.touches?.[0]?.clientX || 0) - startX;
       const newW = Math.max(120, Math.min(600, startWidth + dx));
       const w = newW + 'px';
+      const wh = (newW + HANDLE_W) + 'px';
       const panel  = document.getElementById('gantt-task-panel');
       const leftEl = document.getElementById('gantt-task-list');
       const leftHdr = document.getElementById('gantt-left-header');
       if (panel)   { panel.style.width = w;   panel.style.minWidth = w; }
       if (leftEl)  { leftEl.style.width = w;  leftEl.style.minWidth = w; }
-      if (leftHdr) { leftHdr.style.width = w; leftHdr.style.minWidth = w; }
+      if (leftHdr) { leftHdr.style.width = wh; leftHdr.style.minWidth = wh; }
     };
     const onUp = (e) => {
       handle.classList.remove('dragging');

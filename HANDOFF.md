@@ -3,7 +3,7 @@
 **Project:** WIPflow (`C:\Users\rosik\Sync\AI_Work\WIPflow`)
 **Last worked:** 2026-05-31
 **Git branch:** `master`
-**Current version:** `APP_BASE_VERSION = '1.3'` (in `WIPflow.html`; displayed as `v1.3.N`, where N = `saveVersion` auto-incremented on each "Save as HTML")
+**Current version:** `APP_BASE_VERSION = '1.7'` (in `WIPflow.html`; displayed as `v1.7.N`, where N = `saveVersion` auto-incremented on each "Save as HTML")
 
 ---
 
@@ -17,61 +17,52 @@ Architecture and conventions: [CLAUDE.md](CLAUDE.md) (current source of truth). 
 
 ## State at end of this session
 
-All known bugs and both requested feature tasks are **implemented in `WIPflow.html`**. Changes have **not been committed** — review with `git diff` and commit when ready. The app was **not** opened in the browser preview this session (the tool channel had heavy output latency); a `/verify` pass is the recommended next step before committing.
+All bugs and UI improvements from the v1.7 sprint are **implemented and committed** in `WIPflow.html`. The app was verified in the browser preview — no console errors, all changed paths exercised.
 
-### What changed (full detail + locations in [TODO.md](TODO.md) → "✅ Completed")
+### What changed (full detail in [TODO.md](TODO.md) → v1.7 section)
 
-Bug fixes **B1–B7** and feature tasks **T1–T2**, applied via validated scripts (each replacement asserted its match count):
+**Bug fixes:**
 
-- **B1–B3** — `escHtml()` now wraps all previously-raw user content: Dashboard staff-workload names + upcoming-deadline task names, Table tag chips, and all Toast messages.
-- **B4** — Table/Gantt filter placeholder labels corrected to match the static HTML ("All Statuses" / "All Priorities").
-- **B5** — sidebar logo `<img>` now carries the `logo-icon` class (the rule was previously dead).
-- **B6** — dead `.form-control[readonly]` rule → `.form-control:disabled` (end-date field is `disabled`).
-- **B7** — removed the phantom `pending` status mapping in `statusBadgeClass` and the unused `.badge-pending` CSS rule.
-- **T1** — favicon and logos now use `IconPack/WIPFlow_logo.svg`, inlined as a `data:image/svg+xml;base64,…` URI: a new `<link rel="icon" type="image/svg+xml">` (PNG links kept as fallback) and the sidebar `<img>` src. The About hero copies the sidebar `src` in `switchView('about')`, so it inherits the SVG automatically. Inlining (not an external file) is required so the SVG survives `Storage.exportHTML()` (which serialises `outerHTML`).
-- **T2** — `.doc-grid` (shared by Help & About) already had `max-width: 1100px` but was left-aligned; added `width: 100%; margin: 0 auto;` so both views render at an identical, centred width.
-- **Logo size + versioning (v1.3)** — sidebar logo 30 → 40 px; `APP_BASE_VERSION` 1.2 → 1.3; static version placeholders → 1.3.0; About changelog entry expanded to cover all of the above.
+- **XLS export** — Added `<?mso-application progid="Excel.Sheet"?>` processing instruction and UTF-8 BOM to SpreadsheetML output. Excel no longer shows a format-mismatch warning on open.
+- **Print/PDF** — Replaced bare `window.print()` with a dialog (checkboxes for Dashboard and Gantt; table always included). Prints in landscape. Print CSS updated: always shows `#view-table`; shows optional views via `body[data-print-dash/gantt]` data attributes; proper table formatting (`font-size: 11px`, `border-collapse`).
+- **Gantt alignment** — Fixed 5 px offset between timeline header and chart canvas caused by the resize handle not being included in the left-header width. `gantt-left-header` is now set to `LEFT_WIDTH + 5` in both `render()` and the resize drag handler. Verified pixel-perfect: all four DOM edges equal.
 
-Docs updated this session: [TODO.md](TODO.md), [CLAUDE.md](CLAUDE.md) (version constant reference), in-app About changelog. [WIPflow_DOCUMENTATION.md](WIPflow_DOCUMENTATION.md) was left unchanged (historical; nothing it describes regressed).
+**UI improvements:**
+
+- **Dashboard proportional charts** — `_redrawCharts()` now computes `gridTemplateColumns` proportional to bar counts (`nStatus fr nPriority fr nLab fr`) with a forced layout reflow before drawing, so the canvas sizes are correct.
+- **Gantt Year zoom** — `render()` now dynamically computes `pixelsPerDay` for year zoom to fill the available `gantt-body-wrap` width. Month labels are skipped when the column is < 48 px wide to avoid overlap.
+- **Kanban fill** — `.kanban-col` changed from `width: 260px; flex-shrink: 0` to `flex: 1 1 220px; min-width: 200px`. Columns fill the full board width.
+- **Help & About cards** — `doc-grid` changed from 2-column to 1-column; `grid-column: 1` constraint removed; all cards now span the full content width (up to 1100 px max).
+
+Docs updated: [TODO.md](TODO.md) (v1.7 completed section, ToDo cleared), [HANDOFF.md](HANDOFF.md) (this file), in-app About changelog and Help text.
 
 ---
 
 ## Remaining backlog
 
-See [TODO.md](TODO.md) → "🟠 Improvements / inconsistencies". Open items not yet done (deliberately deferred — larger or behavioural):
-
-- **I1** view-switch always calls `Storage.markDirty()` (needless saves on navigation)
-- **I2** light theme doesn't override semantic colours (`--green/--red/--orange/--purple` + `-bg`)
-- **I3** verify `calcEndDate` off-by-one semantics (1-workday task starts Mon → ends Tue)
-- **I4** escape `<option value>` building in the select populators
-- **I5** CSV is export-only (no CSV import)
-- **I6** deadline "(Xd)" rounding mixes wall-clock `now` with midnight dates
-- **I7** `<head>` polish (`meta description`, `theme-color`)
-- **I8** accessibility: modal focus-trap, ARIA, keyboard alternative to drag-drop
+[TODO.md](TODO.md) → ToDo section is currently empty. Add new items as they are identified.
 
 ---
 
 ## How to work in this file
 
 - Single file, no build. Edit `WIPflow.html`, reload in **Firefox** (primary target — avoid Chrome-only APIs).
-- For large/giant-base64 edits, prefer a small Python script with asserted `str.count()`/`re.subn` counts over hand-matching (that's how B1–B7/T1 were applied safely).
+- Start the preview server: `python -m http.server 5500` (configured in `.claude/launch.json`).
 - Find things by pattern, not line number: `grep -n "APP_BASE_VERSION|DEFAULT_SETTINGS|switchView|exportHTML|escHtml" WIPflow.html`.
 - After a fix: bump `APP_BASE_VERSION` MINOR, update in-app Help/About if user-visible, update [TODO.md](TODO.md), commit.
 - The `Gantt._tooltipBound` guard must persist across renders (don't reset it per render).
+- Gantt `pixelsPerDay` for year zoom is recomputed dynamically at the start of `render()` — don't cache it externally.
 
 ---
 
 ## Suggested skills
 
-Invoke via the Skill tool when relevant:
-
 | Skill | When |
 |---|---|
-| `/verify` | **Do this first** — open `WIPflow.html` in the preview and confirm: SVG logo/favicon render, sidebar logo is visibly larger, Help & About are equal-width and centred, and tasks with `<`/`&` in their names render safely (B1–B3). |
-| `/run` | Start the Python static server (`python -m http.server 5500`) / open the app if the preview isn't running. |
+| `/verify` | Open app in preview, exercise the changed path, screenshot. Always do this before committing. |
+| `/run` | Start the Python static server / open the app if the preview isn't running. |
 | `/code-review` | Review the uncommitted diff for correctness before committing. |
-| `/simplify` | If implementing the backlog (esp. I2/I8) introduces repetition worth trimming. |
-| `/security-review` | Optional sanity pass — this session closed several `innerHTML` injection points (B1–B3). |
+| `/simplify` | If implementing new features introduces repetition worth trimming. |
 
 ---
 
@@ -79,5 +70,6 @@ Invoke via the Skill tool when relevant:
 
 - **Firefox primary.** No File System Access API or other Chrome-only features.
 - `localStorage` is scoped to the file URL — always steer users to "Save as HTML" for portability.
-- `WIPflow.html` is ~3,900 lines; the SVG data URI adds ~5 KB. Keep additions proportionate.
+- `WIPflow.html` is ~4 100 lines. Keep additions proportionate.
 - The base64 SVG lives inline in `<head>` and in the sidebar `<img>`; if the logo art changes, regenerate both from `IconPack/WIPFlow_logo.svg` (`base64 -w0`).
+- Print with canvas (Dashboard, Gantt) works because canvas retains its pixel buffer when hidden. The print flow sequences through views before switching to table to ensure canvases are drawn.

@@ -7,6 +7,29 @@ Last analysis: 2026-05-31 (full source review of all modules).
 
 ## ✅ Completed
 
+### v1.7 (2026-05-31)
+
+**Bug: XLS export format warning**
+Added `<?mso-application progid="Excel.Sheet"?>` processing instruction and UTF-8 BOM to the SpreadsheetML output. Excel no longer shows "file format and extension don't match" warning.
+
+**Bug: Print/PDF export**
+Replaced bare `window.print()` with a dialog that lets the user choose to include Dashboard (KPI & charts) and/or Gantt chart alongside the always-included task table. Prints in landscape (`@page { size: landscape }`). Print CSS updated to always show `#view-table`, show optional views via `body[data-print-dash/gantt]` data attributes, and properly format the table with correct column widths.
+
+**Bug: Gantt chart UI alignment**
+Fixed the 5 px offset between the timeline header and the chart canvas caused by the resize handle not being accounted for in the header width. `gantt-left-header` now has width = `LEFT_WIDTH + 5` (handle width), kept in sync during drag-resize. All four DOM edges (header right, timeline left, body-wrap left, panel+handle right) are now pixel-perfect equal.
+
+**UI: Dashboard proportional chart widths**
+Status Distribution / By Priority / By Laboratory chart columns are now dynamically sized proportional to their bar counts (e.g. 5 bars : 4 bars : 3 bars → 42% : 33% : 25%). `_redrawCharts()` sets `gridTemplateColumns` via JS with a forced layout reflow before drawing.
+
+**UI: Gantt Year zoom fills available area**
+Year zoom now computes `pixelsPerDay` dynamically so the chart fills the visible width. Month labels are skipped when the column width is below 48 px to prevent overlap.
+
+**UI: Kanban Board layout**
+Kanban columns changed from fixed `width: 260px; flex-shrink: 0` to `flex: 1 1 220px; min-width: 200px` — columns grow to fill the full available horizontal area.
+
+**UI: Help & About card widths**
+`doc-grid` changed from 2-column to 1-column layout; `grid-column: 1` constraint removed. All cards now span the full content width (up to 1100 px max).
+
 ### v1.6 (2026-05-31)
 
 **I5 — CSV export documented as one-way**
@@ -101,6 +124,11 @@ Restructured body into `#gantt-body-outer` / `#gantt-task-panel` / `#gantt-body-
 
 ---
 
+## ToDo
+
+No open items at this time. Add new backlog entries here as they are identified.
+
+---
 ## Notes for maintainers
 
 - Single file, no build. Edit `WIPflow.html`, reload browser (Firefox primary).
