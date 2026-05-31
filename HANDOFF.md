@@ -1,102 +1,83 @@
 # WIP Flow — Agent Handoff
 
-**Project:** WIPflow (`C:\Users\rosik\Sync\AI_Work\WIPflow`)  
-**Last worked:** 2026-05-31  
-**Git branch:** `master`  
-**Last commit:** see `git log --oneline -3`
+**Project:** WIPflow (`C:\Users\rosik\Sync\AI_Work\WIPflow`)
+**Last worked:** 2026-05-31
+**Git branch:** `master`
+**Current version:** `APP_BASE_VERSION = '1.3'` (in `WIPflow.html`; displayed as `v1.3.N`, where N = `saveVersion` auto-incremented on each "Save as HTML")
 
 ---
 
 ## What this project is
 
-WIP Flow is a **single-file offline-first HTML application** (`WIPflow.html`) for tracking laboratory work-in-progress. No build step, no dependencies, no server. Open the file in a browser and it runs. All data persists in `localStorage` and as embedded JSON in the HTML file itself.
+WIP Flow is a **single-file, offline-first HTML application** (`WIPflow.html`) for tracking laboratory work-in-progress. No build step, no dependencies, no server — open the file in a browser and it runs. Data persists in `localStorage` and as embedded JSON inside the HTML file (`<script id="labwip-embedded-data">`), so "Save as HTML" produces a portable copy.
 
-The full architecture is documented in [CLAUDE.md](CLAUDE.md). The user-facing manual lives inside the app itself (Help and About views). Technical documentation that predates the rebrand is at [WIPflow_DOCUMENTATION.md](WIPflow_DOCUMENTATION.md) — treat it as historical context; CLAUDE.md and the in-app Help/About are the current source of truth.
-
----
-
-## What was done in the last session
-
-Two commits were made. Diff: `git show HEAD` and `git show HEAD~1`.
-
-**Commit 1 (`87382b8`)** — All TODO items implemented:
-- Bug fixes: TaskModal toast (#1), holiday recalculation (#3)
-- Kanban: equal-height columns, name clamp, empty state, theme re-render, onDrop guard (#4, 5, 6, 9, 13)
-- UX: `disabled` end date, Gantt tooltip leak fix (#7, 10)
-- Low priority: "Save as HTML" sidebar button, dashboard empty state (#11, 12)
-- Versioning: `MAJOR.MINOR.SAVE` format, `saveVersion` in settings, versioned export filename (#14)
-- Assets: app renamed **WIP Flow**, base64 favicons + sidebar logo (#15)
-- [TODO.md](TODO.md) updated to mark all items complete
-
-**Commit 2 (HEAD)** — Help, About, handoff, CLAUDE.md:
-- In-app **Help** view (`#view-help`): manual covering all features; detailed sections on saving/portability and versioning
-- In-app **About** view (`#view-about`): description, author, version (dynamic), changelog, architecture table
-- This handoff document
-- [CLAUDE.md](CLAUDE.md) updated with current module map, workflow rules, and maintenance conventions
+Architecture and conventions: [CLAUDE.md](CLAUDE.md) (current source of truth). User manual: the in-app **Help** and **About** views. [WIPflow_DOCUMENTATION.md](WIPflow_DOCUMENTATION.md) predates the rebrand — historical context only.
 
 ---
 
-## Current version
+## State at end of this session
 
-`APP_BASE_VERSION = '1.2'` (hardcoded in `WIPflow.html` near line 1690).  
-`saveVersion` auto-increments in `AppState.settings` on each "Save as HTML" click.  
-Displayed as `v1.2.N` in sidebar and About view.
+All known bugs and both requested feature tasks are **implemented in `WIPflow.html`**. Changes have **not been committed** — review with `git diff` and commit when ready. The app was **not** opened in the browser preview this session (the tool channel had heavy output latency); a `/verify` pass is the recommended next step before committing.
 
----
+### What changed (full detail + locations in [TODO.md](TODO.md) → "✅ Completed")
 
-## Key file locations in WIPflow.html
+Bug fixes **B1–B7** and feature tasks **T1–T2**, applied via validated scripts (each replacement asserted its match count):
 
-All line numbers are approximate — search by the patterns below.
+- **B1–B3** — `escHtml()` now wraps all previously-raw user content: Dashboard staff-workload names + upcoming-deadline task names, Table tag chips, and all Toast messages.
+- **B4** — Table/Gantt filter placeholder labels corrected to match the static HTML ("All Statuses" / "All Priorities").
+- **B5** — sidebar logo `<img>` now carries the `logo-icon` class (the rule was previously dead).
+- **B6** — dead `.form-control[readonly]` rule → `.form-control:disabled` (end-date field is `disabled`).
+- **B7** — removed the phantom `pending` status mapping in `statusBadgeClass` and the unused `.badge-pending` CSS rule.
+- **T1** — favicon and logos now use `IconPack/WIPFlow_logo.svg`, inlined as a `data:image/svg+xml;base64,…` URI: a new `<link rel="icon" type="image/svg+xml">` (PNG links kept as fallback) and the sidebar `<img>` src. The About hero copies the sidebar `src` in `switchView('about')`, so it inherits the SVG automatically. Inlining (not an external file) is required so the SVG survives `Storage.exportHTML()` (which serialises `outerHTML`).
+- **T2** — `.doc-grid` (shared by Help & About) already had `max-width: 1100px` but was left-aligned; added `width: 100%; margin: 0 auto;` so both views render at an identical, centred width.
+- **Logo size + versioning (v1.3)** — sidebar logo 30 → 40 px; `APP_BASE_VERSION` 1.2 → 1.3; static version placeholders → 1.3.0; About changelog entry expanded to cover all of the above.
 
-| What | How to find |
-|---|---|
-| Version constant | `grep -n "APP_BASE_VERSION"` |
-| Default settings / seed data | `grep -n "DEFAULT_SETTINGS"` |
-| Module declarations | `grep -n "^const \(AppState\|Storage\|App\|Gantt\|Dashboard\|TableView\|KanbanView\|Settings\|Toast\|TaskModal\)"` |
-| Nav items (sidebar) | `grep -n "nav-item.*data-view"` |
-| View panels (HTML) | `grep -n "view-panel"` |
-| switchView() | `grep -n "switchView"` |
-| exportHTML() | `grep -n "exportHTML"` |
-| CSS design tokens | Top of `<style>` block — `:root {` |
+Docs updated this session: [TODO.md](TODO.md), [CLAUDE.md](CLAUDE.md) (version constant reference), in-app About changelog. [WIPflow_DOCUMENTATION.md](WIPflow_DOCUMENTATION.md) was left unchanged (historical; nothing it describes regressed).
 
 ---
 
-## Active backlog
+## Remaining backlog
 
-[TODO.md](TODO.md) — currently empty (all items shipped). Add new items there as they arise.
+See [TODO.md](TODO.md) → "🟠 Improvements / inconsistencies". Open items not yet done (deliberately deferred — larger or behavioural):
+
+- **I1** view-switch always calls `Storage.markDirty()` (needless saves on navigation)
+- **I2** light theme doesn't override semantic colours (`--green/--red/--orange/--purple` + `-bg`)
+- **I3** verify `calcEndDate` off-by-one semantics (1-workday task starts Mon → ends Tue)
+- **I4** escape `<option value>` building in the select populators
+- **I5** CSV is export-only (no CSV import)
+- **I6** deadline "(Xd)" rounding mixes wall-clock `now` with midnight dates
+- **I7** `<head>` polish (`meta description`, `theme-color`)
+- **I8** accessibility: modal focus-trap, ARIA, keyboard alternative to drag-drop
 
 ---
 
-## Rules the previous agent followed (from CLAUDE.md)
+## How to work in this file
 
-1. **Never introduce a build step** — all code stays inline in `WIPflow.html`.
-2. **No classes** — all JS modules are plain object literals.
-3. **Escape user content** with `escHtml()` before any `innerHTML` interpolation.
-4. **`markDirty()` not `save()`** for UI-triggered mutations (debounced).
-5. **Bump `APP_BASE_VERSION` MINOR** when fixing bugs or making small improvements; bump MAJOR for breaking changes.
-6. **Update Help + About** when adding or changing features.
-7. **Update TODO.md** to reflect new backlog items or completed work.
-8. **Commit** after each logical unit of work with a descriptive message.
+- Single file, no build. Edit `WIPflow.html`, reload in **Firefox** (primary target — avoid Chrome-only APIs).
+- For large/giant-base64 edits, prefer a small Python script with asserted `str.count()`/`re.subn` counts over hand-matching (that's how B1–B7/T1 were applied safely).
+- Find things by pattern, not line number: `grep -n "APP_BASE_VERSION|DEFAULT_SETTINGS|switchView|exportHTML|escHtml" WIPflow.html`.
+- After a fix: bump `APP_BASE_VERSION` MINOR, update in-app Help/About if user-visible, update [TODO.md](TODO.md), commit.
+- The `Gantt._tooltipBound` guard must persist across renders (don't reset it per render).
 
 ---
 
 ## Suggested skills
 
-Invoke these via the Skill tool when relevant:
+Invoke via the Skill tool when relevant:
 
-| Skill | When to invoke |
+| Skill | When |
 |---|---|
-| `/verify` | After any code change — launches the app in the preview panel and checks the golden path |
-| `/run` | To start the Python static server and open the app (if preview isn't already running) |
-| `/code-review` | Before committing a large diff — checks for bugs and simplification opportunities |
-| `/simplify` | After a large feature addition — trims unnecessary abstractions |
-| `/fewer-permission-prompts` | If permission prompts for Bash/MCP tools become noisy |
+| `/verify` | **Do this first** — open `WIPflow.html` in the preview and confirm: SVG logo/favicon render, sidebar logo is visibly larger, Help & About are equal-width and centred, and tasks with `<`/`&` in their names render safely (B1–B3). |
+| `/run` | Start the Python static server (`python -m http.server 5500`) / open the app if the preview isn't running. |
+| `/code-review` | Review the uncommitted diff for correctness before committing. |
+| `/simplify` | If implementing the backlog (esp. I2/I8) introduces repetition worth trimming. |
+| `/security-review` | Optional sanity pass — this session closed several `innerHTML` injection points (B1–B3). |
 
 ---
 
 ## Known constraints
 
-- **Firefox is the primary target** — avoid Chrome-only APIs (e.g. File System Access API).
-- `WIPflow.html` is currently ~3 600 lines. Keep additions proportionate.
-- The `_tooltipBound` guard on `Gantt` must **not** be reset between renders — only on full destroy.
-- `localStorage` is scoped to the file URL. Always remind users to use "Save as HTML" for portability.
+- **Firefox primary.** No File System Access API or other Chrome-only features.
+- `localStorage` is scoped to the file URL — always steer users to "Save as HTML" for portability.
+- `WIPflow.html` is ~3,900 lines; the SVG data URI adds ~5 KB. Keep additions proportionate.
+- The base64 SVG lives inline in `<head>` and in the sidebar `<img>`; if the logo art changes, regenerate both from `IconPack/WIPFlow_logo.svg` (`base64 -w0`).

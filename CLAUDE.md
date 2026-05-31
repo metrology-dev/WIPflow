@@ -57,7 +57,7 @@ Version format: `MAJOR.MINOR.SAVE`
 | `MINOR` | Developer (edit `APP_BASE_VERSION`) | Bug fixes, small improvements |
 | `SAVE` | App automatically | Increments on each "Save as HTML" click |
 
-`APP_BASE_VERSION` is a constant near the top of the JS section (`const APP_BASE_VERSION = '1.2';`).  
+`APP_BASE_VERSION` is a constant near the top of the JS section (`const APP_BASE_VERSION = '1.3';`).  
 `saveVersion` lives in `AppState.settings` and persists in localStorage and embedded data.  
 **Bump `MINOR` when shipping bug fixes or small improvements. Bump `MAJOR` for breaking changes or significant new features.**
 
