@@ -3669,8 +3669,8 @@ const Gantt = {
     el.innerHTML = tasks.map(t => `
       <div class="gantt-task-row" style="height:${this.ROW_HEIGHT}px" onclick="TaskModal.open('${t.id}')">
         <span class="dot" style="background:${getPriorityColor(t.priority)}"></span>
-        <div style="overflow:hidden">
-          <div class="gantt-task-name" style="max-width:${this.LEFT_WIDTH-50}px">${escHtml(t.name||'')}</div>
+        <div style="overflow:hidden;flex:1;min-width:0">
+          <div class="gantt-task-name">${escHtml(t.name||'')}</div>
           <div class="gantt-task-sub">${escHtml(t.person||'')} · ${escHtml(t.lab||'')}</div>
         </div>
       </div>
