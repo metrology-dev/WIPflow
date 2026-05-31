@@ -7,21 +7,39 @@ Last analysis: 2026-05-31 (full source review of all modules).
 
 ## ✅ Completed
 
+### v1.4 (2026-05-31)
+
+| # | Item | Fix applied |
+|---|------|-------------|
+| I1 | Every view switch marks data dirty | Removed `Storage.markDirty()` from `App.refresh()`. Added it directly to `TaskModal.save()`, `TaskModal.deleteTask()`, and `KanbanView.onDrop()` — the three actual mutation sites. |
+| I2 | Light theme leaves semantic colours dark | Added light-mode overrides for `--green/--yellow/--red/--orange/--purple` (and `-bg` variants) to `[data-theme="light"]`. |
+| I3 | End-date off-by-one | `calcEndDate` now counts the start date as day 1. A 1-workday task starting Monday now ends Monday. |
+| I4 | Select option values not escaped | `escHtml(v)` applied to `value="..."` and content in `_populateSelect` (TaskModal), and all three `setOpts` helpers (TableView, KanbanView, GanttFilters). |
+| I6 | Deadline "(Xd)" off by one near midnight | `now` normalised to midnight (`now.setHours(0,0,0,0)`) before `daysBetween` in Dashboard. |
+| I7 | `<head>` polish | Added `<meta name="description">` and two `<meta name="theme-color">` tags (dark + light). |
+| I9 | Fonts and readability — Dashboard charts | Y-axis labels 9 → 11 px, value labels 10 → 12 px, x-axis labels 9 → 11 px. Bottom padding widened. |
+| I10 | Logo visibility | Sidebar logo enlarged from 40 → 48 px. |
+| I11 | Documentation | Rewrote `CLAUDE.md` and `TODO.md` to minimise tables; replaced with bullets, numbered lists, code blocks, and ASCII diagrams. Added documentation-guidelines section to CLAUDE.md. |
+| I14 | Gantt: resizable task panel | Drag handle (`#gantt-resize-handle`) added between task list and chart area. `Gantt._initResizeHandle()` updates `LEFT_WIDTH` live on drag. |
+| I15 | Gantt: task panel scrolls away horizontally | `#gantt-task-list` and `#gantt-resize-handle` now `position: sticky; left: 0; z-index: 2`. |
+
 ### v1.3 (2026-05-31)
+
 | # | Item | Fix applied |
 |---|------|-------------|
 | 16 | Sidebar logo too small / not clearly visible | Enlarged logo `<img>` from 30→40 px, bumped `border-radius` to 8 px. `APP_BASE_VERSION` → `1.3`; Help/About version placeholders → 1.3.0; About changelog entry added. |
-| B1 | User content not HTML-escaped on Dashboard | `escHtml()` added to staff-workload `${name}` (line ~2828) and upcoming-deadline `${t.name}` (line ~2853). |
-| B2 | Table tags not escaped | `escHtml(tag.trim())` in `TableView.render()` (line ~3065). |
-| B3 | Toast messages use raw `innerHTML` | `escHtml(msg)` in `Toast.show()` (line ~2418). |
-| B4 | Filter placeholder labels mismatch | JS labels corrected to "All Statuses"/"All Priorities" in `TableView.populateFilters()` and `GanttFilters.populate()` (lines ~3009-3010, ~3242). |
-| B5 | Dead `.logo-icon` class never applied | Added `class="logo-icon"` to sidebar `<img>` (line ~1222), wiring up the existing rule. |
-| B6 | Dead `.form-control[readonly]` CSS | Replaced with `.form-control:disabled` (line 370) to match the now-`disabled` end-date field. |
-| B7 | `statusBadgeClass` maps non-existent `pending` status | Removed `'pending':'badge-pending'` from the map and the unused `.badge-pending` CSS rule. |
-| T1 | Replace favicon + logo with the IconPack SVG | `IconPack/WIPFlow_logo.svg` inlined as a `data:image/svg+xml;base64` URI: new `<link rel="icon" type="image/svg+xml">` (PNG links retained as fallback) and sidebar `<img>` src. About hero inherits it via the existing `src`-copy in `switchView('about')`. Inlined so it survives `Storage.exportHTML()`. |
-| T2 | Make Help and About the same width | `.doc-grid` already had `max-width:1100px` but was left-aligned; added `width:100%; margin:0 auto;` so both views render at an identical centred width. |
+| B1 | User content not HTML-escaped on Dashboard | `escHtml()` added to staff-workload `${name}` and upcoming-deadline `${t.name}`. |
+| B2 | Table tags not escaped | `escHtml(tag.trim())` in `TableView.render()`. |
+| B3 | Toast messages use raw `innerHTML` | `escHtml(msg)` in `Toast.show()`. |
+| B4 | Filter placeholder labels mismatch | JS labels corrected to "All Statuses"/"All Priorities" in `TableView.populateFilters()` and `GanttFilters.populate()`. |
+| B5 | Dead `.logo-icon` class never applied | Added `class="logo-icon"` to sidebar `<img>`. |
+| B6 | Dead `.form-control[readonly]` CSS | Replaced with `.form-control:disabled`. |
+| B7 | `statusBadgeClass` maps non-existent `pending` status | Removed `'pending':'badge-pending'` and the unused `.badge-pending` CSS rule. |
+| T1 | Replace favicon + logo with the IconPack SVG | `IconPack/WIPFlow_logo.svg` inlined as a `data:image/svg+xml;base64` URI. |
+| T2 | Make Help and About the same width | Added `width:100%; margin:0 auto;` to `.doc-grid`. |
 
 ### v1.2 (implemented 2026-05-31)
+
 | # | Item | Fix applied |
 |---|------|-------------|
 | 1 | Task modal toast always shows "Task created" | Capture `wasEdit` before `close()` |
@@ -43,20 +61,28 @@ Last analysis: 2026-05-31 (full source review of all modules).
 
 ## 🟠 Improvements / inconsistencies
 
-| # | Item | Detail |
-|---|------|--------|
-| I1 | **Every view switch marks data dirty** | `App.refresh()` always calls `Storage.markDirty()`, even when only navigating (no mutation). This flips the indicator "Unsaved → Saved" and triggers a debounced `localStorage` write on every view change. Consider calling `markDirty()` only from actual mutations, not from pure re-renders. |
-| I2 | **Light theme leaves semantic colours dark** | `[data-theme="light"]` overrides bg/text/accent/shadow but **not** `--green/--yellow/--red/--orange/--purple` (or their `-bg` variants). These dark-tuned colours are reused on the light background (badges, KPI accents, charts). Add light-mode values for contrast. |
-| I3 | **End-date off-by-one worth verifying** | `WorkCalendar.calcEndDate` advances *before* checking, so a 1-workday/100% task starting Monday ends **Tuesday**, not Monday. If "1 workday" should finish the same day, subtract one step. Confirm intended semantics and align Help text. |
-| I4 | **Select option values not escaped** | `TaskModal._populateSelect`, `TableView/Gantt/Kanban setOpts` build `<option value="${v}">` from settings lists. A lab/person/tag containing `"` would break the attribute. Escape values. |
-| I5 | **CSV export/import asymmetry** | `exportCSV` writes an `alloc` column header but the field is stored as `alloc`; re-importing CSV is not supported at all (only `.labwip` JSON imports). Document as one-way, or add CSV import. |
-| I6 | **Deadline "(Xd)" can be off by one** | `daysBetween(now, endDate)` mixes current wall-clock time with a midnight date; rounding can show one day off near midnight. Normalise `now` to midnight before diffing. |
-| I7 | **`<head>` polish** | No `<meta name="description">` or `<meta name="theme-color">`. Minor SEO/PWA niceties. (Favicon now SVG + PNG fallback — done in T1.) |
-| I8 | **Accessibility** | Modal/dialog has `role="dialog"` but no focus-trap; nav items and drag-drop columns lack ARIA labels/keyboard alternatives. Drag-and-drop has no keyboard fallback. |
+**I5 — CSV export/import asymmetry**
+
+`exportCSV` writes an `alloc` column but re-importing CSV is not supported (only `.labwip` JSON imports). Either document as one-way or add CSV import.
+
+**I8 — Accessibility**
+
+Modal has `role="dialog"` but no focus-trap. Nav items and drag-drop columns lack ARIA labels and keyboard alternatives. Drag-and-drop has no keyboard fallback.
+
+**I12 — Inline task edit in Table View**
+
+Clicking a row opens the full modal. Direct cell editing for Status and Progress (the two fields changed most often at standups) would speed up daily updates. Could use a small inline dropdown/number input triggered by clicking those cells.
+
+**I13 — PDF / Excel export**
+
+Can be prototyped without a build step:
+- PDF: `window.print()` + `@media print` CSS
+- Excel: lightweight CSV → XLSX conversion
 
 ---
 
 ## Notes for maintainers
+
 - Single file, no build. Edit `WIPflow.html`, reload browser (Firefox primary).
 - After a fix: bump `APP_BASE_VERSION` MINOR, update in-app Help/About, update this file, commit.
-- Escaping helper is `escHtml()` — use it for **all** user-derived content in template strings.
+- Escaping helper is `escHtml()` — use it for **all** user-derived content in template strings, including `<option value="...">` attributes.
