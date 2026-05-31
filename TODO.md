@@ -7,6 +7,16 @@ Last analysis: 2026-05-31 (full source review of all modules).
 
 ## ✅ Completed
 
+### v1.8 (2026-05-31)
+
+**Design system modernization**
+
+- Color system: refined dark-mode palette — more vibrant semantic colors (green `#3fb950`, red `#f85149`, purple `#a371f7`), deeper shadows, and improved bg-4/border separation for clearer surface layering
+- Accessibility: dark-mode `--text-3` lifted to `#768390` (~4.5:1 contrast on dark bg); light-mode `--text-3` improved to `#636b75` (~5.4:1 on white) — both WCAG AA compliant for small text
+- Badge borders replaced hard-coded RGBA values with semantic CSS custom properties (`--badge-border-*`) — consistent theming across both modes
+- Typography: removed `font-family: var(--mono)` from non-code UI labels (form labels, table column headers, Gantt task-panel header, nav section labels, Kanban column titles); normalised 13.5 px → 14 px body copy
+- Charts: `PRIORITY_COLORS` and `STATUS_COLORS` changed to CSS variable strings (`var(--red)` etc.) resolved at render time — Gantt bars, dot indicators, and bar charts all use theme-correct colours
+- Gantt canvas: holiday and today-marker colours now read `--orange` / `--orange-bg` CSS variables; top-level `resolveColor()` helper added for safe canvas CSS-var resolution
 ### v1.7 (2026-05-31)
 
 **Bug: XLS export format warning**
@@ -126,9 +136,10 @@ Restructured body into `#gantt-body-outer` / `#gantt-task-panel` / `#gantt-body-
 
 ## ToDo
 
-No open items at this time. Add new backlog entries here as they are identified.
+No backlog items. Add new items here as they are identified.
 
 ---
+
 ## Notes for maintainers
 
 - Single file, no build. Edit `WIPflow.html`, reload browser (Firefox primary).

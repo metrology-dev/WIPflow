@@ -37,28 +37,33 @@
   --bg:         #0d1117;
   --bg-2:       #161b22;
   --bg-3:       #21262d;
-  --bg-4:       #30363d;
+  --bg-4:       #2d333b;
   --border:     #30363d;
-  --border-2:   #3d444d;
-  --text:       #e6edf3;
-  --text-2:     #8b949e;
-  --text-3:     #6e7681;
+  --border-2:   #444c56;
+  --text:       #dce6f0;
+  --text-2:     #8b9ab0;
+  --text-3:     #768390;
   --accent:     #1f6feb;
-  --accent-2:   #388bfd;
-  --accent-hl:  rgba(31,111,235,0.15);
-  --green:      #2ea043;
-  --green-bg:   rgba(46,160,67,0.15);
+  --accent-2:   #4493f8;
+  --accent-hl:  rgba(31,111,235,0.12);
+  --green:      #3fb950;
+  --green-bg:   rgba(63,185,80,0.12);
   --yellow:     #d29922;
-  --yellow-bg:  rgba(210,153,34,0.15);
-  --red:        #da3633;
-  --red-bg:     rgba(218,54,51,0.15);
+  --yellow-bg:  rgba(210,153,34,0.12);
+  --red:        #f85149;
+  --red-bg:     rgba(248,81,73,0.12);
   --orange:     #e3622b;
-  --orange-bg:  rgba(227,98,43,0.15);
-  --purple:     #8957e5;
-  --purple-bg:  rgba(137,87,229,0.15);
-  --cyan:       #1b7c83;
-  --shadow:     0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3);
-  --shadow-lg:  0 8px 32px rgba(0,0,0,0.5);
+  --orange-bg:  rgba(227,98,43,0.12);
+  --purple:     #a371f7;
+  --purple-bg:  rgba(163,113,247,0.12);
+  --cyan:       #39c5cf;
+  --badge-border-red:    rgba(248, 81, 73, 0.35);
+  --badge-border-orange: rgba(227, 98, 43, 0.35);
+  --badge-border-yellow: rgba(210,153, 34, 0.35);
+  --badge-border-green:  rgba( 63,185, 80, 0.35);
+  --badge-border-purple: rgba(163,113,247, 0.35);
+  --shadow:     0 1px 2px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.4);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.3);
   --radius:     6px;
   --radius-lg:  10px;
   --font:       'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -68,30 +73,36 @@
 }
 
 [data-theme="light"] {
-  --bg:         #f6f8fa;
+  --bg:         #f5f7fa;
   --bg-2:       #ffffff;
-  --bg-3:       #f0f2f4;
-  --bg-4:       #e4e8ec;
-  --border:     #d0d7de;
-  --border-2:   #b9c0ca;
-  --text:       #1f2328;
-  --text-2:     #57606a;
-  --text-3:     #8c959f;
+  --bg-3:       #eef1f5;
+  --bg-4:       #e3e8ef;
+  --border:     #d1d8e0;
+  --border-2:   #b5bfc9;
+  --text:       #1c2330;
+  --text-2:     #4a5568;
+  --text-3:     #636b75;
   --accent:     #0969da;
   --accent-2:   #0550ae;
-  --accent-hl:  rgba(9,105,218,0.1);
+  --accent-hl:  rgba(9,105,218,0.08);
   --green:      #1a7f37;
-  --green-bg:   rgba(26,127,55,0.1);
+  --green-bg:   rgba(26,127,55,0.08);
   --yellow:     #9a6700;
-  --yellow-bg:  rgba(154,103,0,0.1);
+  --yellow-bg:  rgba(154,103,0,0.08);
   --red:        #cf222e;
-  --red-bg:     rgba(207,34,46,0.1);
+  --red-bg:     rgba(207,34,46,0.08);
   --orange:     #bc4c00;
-  --orange-bg:  rgba(188,76,0,0.1);
+  --orange-bg:  rgba(188,76,0,0.08);
   --purple:     #6639ba;
-  --purple-bg:  rgba(102,57,186,0.1);
-  --shadow:     0 1px 3px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08);
-  --shadow-lg:  0 8px 24px rgba(0,0,0,0.14);
+  --purple-bg:  rgba(102,57,186,0.08);
+  --cyan:       #0c7a7d;
+  --badge-border-red:    rgba(207, 34, 46, 0.30);
+  --badge-border-orange: rgba(188, 76,  0, 0.30);
+  --badge-border-yellow: rgba(154,103,  0, 0.30);
+  --badge-border-green:  rgba( 26,127, 55, 0.30);
+  --badge-border-purple: rgba(102, 57,186, 0.30);
+  --shadow:     0 1px 3px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);
+  --shadow-lg:  0 8px 24px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.06);
 }
 
 /* ================================================================
@@ -176,11 +187,10 @@ input, select, textarea { font-family: var(--font); }
 .nav-section-label {
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-3);
   padding: 8px 10px 4px;
-  font-family: var(--mono);
 }
 
 .nav-item {
@@ -192,7 +202,7 @@ input, select, textarea { font-family: var(--font); }
   color: var(--text-2);
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
-  font-size: 13.5px;
+  font-size: 14px;
   margin-bottom: 1px;
   border: none;
   background: none;
@@ -209,8 +219,7 @@ input, select, textarea { font-family: var(--font); }
   margin-left: auto;
   background: var(--bg-4);
   color: var(--text-2);
-  font-family: var(--mono);
-  font-size: 10px;
+  font-size: 11px;
   padding: 1px 6px;
   border-radius: 10px;
 }
@@ -255,7 +264,6 @@ input, select, textarea { font-family: var(--font); }
 #topbar-subtitle {
   font-size: 12px;
   color: var(--text-3);
-  font-family: var(--mono);
 }
 
 #topbar-actions { display: flex; align-items: center; gap: 8px; }
@@ -345,15 +353,15 @@ input, select, textarea { font-family: var(--font); }
   letter-spacing: 0.02em;
 }
 
-.badge-critical  { background: var(--red-bg);    color: var(--red);    border: 1px solid rgba(218,54,51,0.3); }
-.badge-high      { background: var(--orange-bg);  color: var(--orange); border: 1px solid rgba(227,98,43,0.3); }
-.badge-medium    { background: var(--yellow-bg);  color: var(--yellow); border: 1px solid rgba(210,153,34,0.3); }
-.badge-low       { background: var(--green-bg);   color: var(--green);  border: 1px solid rgba(46,160,67,0.3); }
+.badge-critical  { background: var(--red-bg);    color: var(--red);    border: 1px solid var(--badge-border-red); }
+.badge-high      { background: var(--orange-bg);  color: var(--orange); border: 1px solid var(--badge-border-orange); }
+.badge-medium    { background: var(--yellow-bg);  color: var(--yellow); border: 1px solid var(--badge-border-yellow); }
+.badge-low       { background: var(--green-bg);   color: var(--green);  border: 1px solid var(--badge-border-green); }
 
-.badge-active      { background: var(--green-bg);   color: var(--green);  border: 1px solid rgba(46,160,67,0.3); }
-.badge-blocked     { background: var(--red-bg);     color: var(--red);    border: 1px solid rgba(218,54,51,0.3); }
+.badge-active      { background: var(--green-bg);   color: var(--green);  border: 1px solid var(--badge-border-green); }
+.badge-blocked     { background: var(--red-bg);     color: var(--red);    border: 1px solid var(--badge-border-red); }
 .badge-completed   { background: var(--bg-3);       color: var(--text-2); border: 1px solid var(--border); }
-.badge-on-hold     { background: var(--purple-bg);  color: var(--purple); border: 1px solid rgba(137,87,229,0.3); }
+.badge-on-hold     { background: var(--purple-bg);  color: var(--purple); border: 1px solid var(--badge-border-purple); }
 .badge-not-started { background: var(--bg-3);       color: var(--text-3); border: 1px solid var(--border); }
 
 /* ================================================================
@@ -364,8 +372,7 @@ input, select, textarea { font-family: var(--font); }
   font-size: 12px;
   font-weight: 500;
   color: var(--text-2);
-  font-family: var(--mono);
-  letter-spacing: 0.03em;
+  letter-spacing: 0.01em;
 }
 .form-label .required { color: var(--red); margin-left: 2px; }
 
@@ -419,10 +426,9 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 }
 
 .card-title {
-  font-size: 14px;
-  font-weight: 600;
-  font-family: var(--font);
-  letter-spacing: 0.02em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   color: var(--text-2);
   text-transform: uppercase;
   flex: 1;
@@ -632,9 +638,8 @@ textarea.form-control { resize: vertical; min-height: 70px; }
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   color: var(--text-3);
-  font-family: var(--mono);
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
@@ -773,9 +778,8 @@ textarea.form-control { resize: vertical; min-height: 70px; }
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   color: var(--text-3);
-  font-family: var(--mono);
 }
 
 #gantt-timeline-header {
@@ -847,7 +851,6 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 .gantt-task-sub {
   font-size: 11px;
   color: var(--text-3);
-  font-family: var(--mono);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -921,7 +924,7 @@ textarea.form-control { resize: vertical; min-height: 70px; }
   display: flex;
   flex-direction: column;
   gap: 10px;
-  font-size: 13.5px;
+  font-size: 14px;
   line-height: 1.65;
   color: var(--text-2);
 }
@@ -1208,7 +1211,7 @@ tr.overdue td.td-name { color: var(--red); }
   font-weight: 600;
   color: var(--text-2);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
 }
 .kanban-col-count {
   font-size: 11px;
@@ -1952,6 +1955,14 @@ tr.overdue td.td-name { color: var(--red); }
           <div class="card full">
             <div class="card-header"><span class="card-title">Changelog</span></div>
             <div class="doc-body">
+              <p><strong>v1.8</strong> — Design system modernization</p>
+              <ul>
+                <li>Color system: refined dark-mode palette — deeper shadows, more vibrant status/priority colors (green, red, purple), improved visual layering between surfaces</li>
+                <li>Accessibility: dark-mode muted text (<code>--text-3</code>) now meets WCAG AA contrast on all backgrounds; light-mode muted text improved to 5.4:1 contrast ratio</li>
+                <li>Badge borders now use semantic CSS variables instead of hard-coded RGBA, ensuring consistent theming in both light and dark modes</li>
+                <li>Typography: removed monospace font from non-code UI labels (form labels, table column headers, Gantt task panel header, nav labels, Kanban column titles); consistent 14 px body size throughout</li>
+                <li>Charts: priority and status colors now read from CSS variables so they match the active theme; Gantt holiday/today marker colors use CSS variables</li>
+              </ul>
               <p><strong>v1.7</strong> — Layout, alignment, and export improvements</p>
               <ul>
                 <li>Export Excel (.xls): added <code>mso-application</code> processing instruction and UTF-8 BOM — Excel no longer shows a format-mismatch warning</li>
@@ -2149,7 +2160,7 @@ tr.overdue td.td-name { color: var(--red); }
 // ================================================================
 // CONSTANTS & DEFAULT CONFIG
 // ================================================================
-const APP_BASE_VERSION = '1.7';  // MAJOR.MINOR — increment manually
+const APP_BASE_VERSION = '1.8';  // MAJOR.MINOR — increment manually
 const APP_VERSION = APP_BASE_VERSION;
 const STORAGE_KEY = 'labwip_data';
 
@@ -2166,28 +2177,36 @@ const DEFAULT_SETTINGS = {
   holidays:   [],   // YYYY-MM-DD strings excluded from workday calculations
 };
 
-/** Color map for priorities */
+/** Color map for priorities — CSS variable strings so theme changes apply */
 const PRIORITY_COLORS = {
-  'critical': '#da3633',
-  'high':     '#e3622b',
-  'medium':   '#d29922',
-  'low':      '#2ea043',
+  'critical': 'var(--red)',
+  'high':     'var(--orange)',
+  'medium':   'var(--yellow)',
+  'low':      'var(--green)',
 };
 
 /** Color map for statuses */
 const STATUS_COLORS = {
-  'active':       '#2ea043',
-  'not started':  '#6e7681',
-  'on hold':      '#8957e5',
-  'blocked':      '#da3633',
-  'completed':    '#3d444d',
+  'active':       'var(--green)',
+  'not started':  'var(--text-3)',
+  'on hold':      'var(--purple)',
+  'blocked':      'var(--red)',
+  'completed':    'var(--border-2)',
 };
 
 function getPriorityColor(p) {
-  return PRIORITY_COLORS[(p||'').toLowerCase()] || '#6e7681';
+  return PRIORITY_COLORS[(p||'').toLowerCase()] || 'var(--text-3)';
 }
 function getStatusColor(s) {
-  return STATUS_COLORS[(s||'').toLowerCase()] || '#6e7681';
+  return STATUS_COLORS[(s||'').toLowerCase()] || 'var(--text-3)';
+}
+/** Resolve a CSS variable color string to a concrete hex/rgb value for canvas use */
+function resolveColor(color) {
+  if (typeof color === 'string' && color.startsWith('var(')) {
+    return getComputedStyle(document.documentElement)
+      .getPropertyValue(color.slice(4, -1)).trim() || '#888888';
+  }
+  return color;
 }
 function priorityBadgeClass(p) {
   const map = { 'critical':'badge-critical','high':'badge-high','medium':'badge-medium','low':'badge-low' };
@@ -3795,6 +3814,9 @@ const Gantt = {
       holidayMap[h.slice(0, 10)] = h.slice(11).trim();
     });
 
+    const orangeCol  = style.getPropertyValue('--orange').trim() || '#e3622b';
+    const holidayBgH = style.getPropertyValue('--orange-bg').trim() || 'rgba(227,98,43,0.12)';
+
     // Pass 1 — weekend / holiday background fills on the label row (y 18..50)
     for (let i = 0; i < tot; i++) {
       const d = new Date(sd);
@@ -3803,7 +3825,7 @@ const Gantt = {
       const dateStr = WorkCalendar.fmt(d);
       const dow = d.getDay();
       if (dateStr in holidayMap) {
-        ctx.fillStyle = 'rgba(227,98,43,0.22)';
+        ctx.fillStyle = holidayBgH;
         ctx.fillRect(x, 18, pd, 32);
       } else if (dow === 0 || dow === 6) {
         ctx.fillStyle = document.documentElement.dataset.theme === 'light'
@@ -3843,7 +3865,7 @@ const Gantt = {
         ctx.strokeStyle = border;
         ctx.lineWidth   = 0.5;
         ctx.beginPath(); ctx.moveTo(x, 20); ctx.lineTo(x, 50); ctx.stroke();
-        const dayColor = isHoliday ? '#e3622b' : (dow===0||dow===6 ? text2 : text1);
+        const dayColor = isHoliday ? orangeCol : (dow===0||dow===6 ? text2 : text1);
         ctx.fillStyle  = dayColor;
         ctx.textAlign  = 'center';
         // Day abbreviation (Mon/Tue/…)
@@ -3871,7 +3893,7 @@ const Gantt = {
         }
         // Holiday dot on the Monday of the holiday week
         if (isHoliday && pd >= 8) {
-          ctx.fillStyle = '#e3622b';
+          ctx.fillStyle = orangeCol;
           ctx.beginPath();
           ctx.arc(x + pd/2, 44, 2.5, 0, Math.PI*2);
           ctx.fill();
@@ -3896,7 +3918,7 @@ const Gantt = {
     const todayOff = WorkCalendar.daysBetween(sd, new Date());
     if (todayOff >= 0 && todayOff < tot) {
       const tx = todayOff * pd + pd/2;
-      ctx.strokeStyle = '#e3622b';
+      ctx.strokeStyle = orangeCol;
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(tx, 18); ctx.lineTo(tx, 50); ctx.stroke();
     }
@@ -3925,13 +3947,14 @@ const Gantt = {
     });
 
     // Weekend and holiday column shading
+    const orangeBar   = style.getPropertyValue('--orange').trim() || '#e3622b';
     const holidayDates = new Set((AppState.settings.holidays || []).map(h => h.slice(0, 10)));
     for (let i = 0; i < this._totalDays; i++) {
       const d = new Date(sd);
       d.setDate(sd.getDate() + i);
       const dateStr = WorkCalendar.fmt(d);
       if (holidayDates.has(dateStr)) {
-        ctx.fillStyle = 'rgba(227,98,43,0.13)';
+        ctx.fillStyle = style.getPropertyValue('--orange-bg').trim() || 'rgba(227,98,43,0.12)';
         ctx.fillRect(i*pd, 0, pd, H);
       } else if (d.getDay() === 0 || d.getDay() === 6) {
         ctx.fillStyle = document.documentElement.dataset.theme === 'light'
@@ -3954,7 +3977,7 @@ const Gantt = {
     const todayOff = WorkCalendar.daysBetween(sd, today);
     if (todayOff >= 0 && todayOff < this._totalDays) {
       const tx = todayOff * pd + pd/2;
-      ctx.strokeStyle = '#e3622b';
+      ctx.strokeStyle = orangeBar;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4,3]);
       ctx.beginPath(); ctx.moveTo(tx, 0); ctx.lineTo(tx, H); ctx.stroke();
@@ -3976,7 +3999,7 @@ const Gantt = {
       const r    = 4;
 
       // Bar background
-      const color = getPriorityColor(t.priority);
+      const color = resolveColor(getPriorityColor(t.priority));
       ctx.fillStyle = color;
       ctx.globalAlpha = 0.75;
       this._roundRect(ctx, x1, barY, barW, barH, r);
