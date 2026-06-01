@@ -1,86 +1,97 @@
 # WIP Flow — Agent Handoff
 
-**Branch:** `feature/calendar-sidebar`
-**Version:** 2.1 (awaiting merge to `master`)
+**Branch:** `master`
+**Version:** 2.1
 **Date:** 2026-06-02
-**Status:** Implemented, verified in browser preview, awaiting user review and merge approval.
+**Status:** Shipped and merged.
 
 ---
 
-## What was done
+## Current state
 
-Implemented the Calendar Sidebar feature from the v2.1 specification in `TODO.md`. All changes are in a single file (`WIPflow.html`) plus documentation updates (`CLAUDE.md`, `TODO.md`).
+WIP Flow is a single-file offline-first HTML app (`WIPflow.html`). All code is inline — no build step. Open directly in a browser (Firefox primary) to run.
 
-### New modules added
-
-- **`GlobalFilter`** (declared between `grp` helper and `Storage`): runtime-only date filter state. `selectedDate` is YYYY-MM-DD or null. `setDate(date)` toggles; `clearDate()` resets. Calls `SidebarCalendar.render()` and `App.refresh()`. Not persisted.
-- **`SidebarCalendar`** (declared after `Settings`, before the window resize handler): sidebar calendar component. State: `_year`, `_month` (current display month), `_collapsed`. `init()` seeds current month and renders; `render()` redraws the calendar grid; `navigate(delta)` steps months; `selectDate(dateStr)` delegates to `GlobalFilter.setDate()`.
-
-### HTML additions
-
-- `#sidebar-scroll-area` wrapper: wraps `#sidebar-nav` and `#sidebar-calendar-section` in a `flex:1; overflow-y:auto` container so both scroll together while logo and footer stay fixed.
-- `#sidebar-calendar-section`: below the nav in the sidebar, with a collapsible header (`SidebarCalendar.toggleCollapse()`) and calendar container `#sidebar-calendar`.
-- `#date-filter-bar`: a flex div between `<header id="topbar">` and `<div id="view-area">`. Hidden by CSS (`display:none`); shown as `display:flex` when `GlobalFilter.selectedDate` is non-null. Contains the date chip and a Clear button.
-- Calendar Settings card added to Settings view (below Group Terminology, above Data Management).
-
-### CSS additions (all in the sidebar CSS area)
-
-- `#sidebar-scroll-area`, `#sidebar-nav` (override to `flex:0 0 auto`)
-- `#sidebar-calendar-section`, `.cal-section-header`
-- `#sidebar-calendar`, `.cal-nav`, `.cal-month-title`, `.cal-nav-btn`, `.cal-today-btn`
-- `.cal-grid`, `.cal-hdr`, `.cal-wk`, `.cal-day`, `.cal-day-num`
-- `.cal-day-today`, `.cal-day-selected`, `.cal-day-outside`
-- `.cal-day-dots`, `.cal-dot`, `.cal-dot-active`, `.cal-dot-overdue`, `.cal-dot-planned`
-- `#date-filter-bar`, `.date-filter-chip`
-
-### Modified existing modules
-
-- **`DEFAULT_SETTINGS`**: added `calendarWeekNumbering: 'iso'`, `calendarFirstDay: 'mon'`, `calendarShowOutsideDays: true`.
-- **`AppState.getFilteredTasks`**: added `filters.selectedDate` branch — filters tasks where `startDate <= date <= endDate`.
-- **`App.init()`**: calls `SidebarCalendar.init()` after `Dashboard.initResizeObserver()`.
-- **`App.refresh()`**: calls `SidebarCalendar.render()` after view refresh (updates dots when task data changes).
-- **`Dashboard.render()`**: applies `GlobalFilter.selectedDate` before computing all KPIs and charts; shows a date-aware empty state when filtered list is empty.
-- **`TableView.render()`**: merges `GlobalFilter.selectedDate` into filters on every render call.
-- **`KanbanView._getFilteredTasks()`**: applies `GlobalFilter.selectedDate` after lab/person filters.
-- **`Gantt._getFilteredTasks()`**: applies `GlobalFilter.selectedDate` after standard filters.
-- **`Gantt.render()`**: after `_drawBars()`, if a date is selected, `requestAnimationFrame`-scrolls to that date position.
-- **`Gantt._drawBars()`**: draws an accent-coloured dashed vertical guide line at the selected date position.
-- **`Settings.render()`**: populates the three calendar settings inputs from `AppState.settings`.
-- **`Settings`**: new method `saveCalendarSettings()` — reads the three inputs, saves to `AppState.settings`, calls `Storage.save()` and `SidebarCalendar.render()`.
-
-### Documentation
-
-- `TODO.md`: replaced full spec with concise completed entry under v2.1; added notes about `GlobalFilter` and `SidebarCalendar` to Notes for maintainers.
-- `CLAUDE.md`: updated module list, file size estimate (~4 600 lines), added `GlobalFilter` and `SidebarCalendar` entries, added `GlobalFilter` convention note.
-- Help view (`#view-help`): added "Calendar Sidebar" card explaining dots, filtering, navigation, and settings.
-- About view (`#view-about`): added v2.1 changelog entry at the top.
+The app is on version **2.1**. All planned work from `TODO.md` is complete. There are no open bugs or pending items.
 
 ---
 
-## Verification done
+## What shipped in v2.1
 
-- Calendar renders with correct week numbers (ISO 8601, Monday-first) and all 35 cells for June 2026.
-- Clicking a date (e.g. 2026-06-05) sets `GlobalFilter.selectedDate`, shows the filter bar with "5 June 2026", filters Dashboard KPIs to 8 tasks (correct count verified), and visually selects the day.
-- Clearing via `GlobalFilter.clearDate()` resets to null, hides the bar, and restores 18 total tasks.
-- Calendar Settings inputs render with correct defaults (iso / mon).
-- No JS errors in browser console.
+Calendar Sidebar with global date filtering. Full details in `TODO.md` (Completed → v2.1).
 
----
+Key architectural additions:
 
-## Pending / out of scope
+- **`GlobalFilter`** — runtime-only shared filter state (`selectedDate: YYYY-MM-DD | null`). All views read it on render. Not persisted. Declared between `grp` helper and `Storage`.
+- **`SidebarCalendar`** — sidebar calendar component. Declared after `Settings`. Depends on `GlobalFilter` and all view modules.
+- **`#sidebar-calendar-section`** — inside `<nav>`, directly after the Kanban button, separated from Views by a `<div class="divider">` and from Manage by another.
+- **`#date-filter-bar`** — between `<header id="topbar">` and `<div id="view-area">`. Hidden by CSS; shown as `flex` when `GlobalFilter.selectedDate` is set.
+- **Settings → Calendar** card — week numbering, first day of week, show outside days.
 
-The following items from the original spec were deliberately deferred:
-
-- **"Open Task List" click action** (Settings → Calendar → Click Action): not implemented — current action is always "Filter Tasks".
-- **Week view / agenda view**: future; `SidebarCalendar` is structured so a `_renderWeekView()` can be added alongside `render()`.
-- **Multi-day / date-range selection**: `GlobalFilter` currently holds a single `selectedDate`; extend to `{startDate, endDate}` to support ranges.
-- **Task creation from calendar**: no `+` button on day cells.
+Day highlight design:
+- **Today**: bold `--accent` text (no background)
+- **Selected**: `--accent-2` inset border square (no fill), hover covers the full cell including dots
 
 ---
 
-## Architecture notes for future agents
+## Architecture quick-reference
 
-- `GlobalFilter` is declared between `grp` and `Storage` in the JS. `SidebarCalendar` is declared last (after `Settings`) because it depends on `GlobalFilter` and all view modules.
-- The sidebar layout change required an override CSS rule for `#sidebar-nav { flex: 0 0 auto }` after the original `#sidebar-nav { flex: 1 }` rule. Both are in the CSS; the later rule wins.
-- `SidebarCalendar.render()` is lightweight — it rebuilds only the calendar grid HTML. Calling it on every `App.refresh()` is intentional and has negligible cost.
-- The filter logic `startDate <= date <= endDate` is applied in four places: `AppState.getFilteredTasks`, `KanbanView._getFilteredTasks`, `Gantt._getFilteredTasks`, and `Dashboard.render`. New views must follow the same pattern.
+```
+WIPflow.html (~4 600 lines)
+│
+├── CSS (lines ~10–1290)
+├── HTML (lines ~1290–1940)
+│   ├── #sidebar
+│   │   ├── #sidebar-logo
+│   │   ├── #sidebar-scroll-area
+│   │   │   └── nav#sidebar-nav
+│   │   │       ├── Views buttons
+│   │   │       ├── [divider]
+│   │   │       ├── #sidebar-calendar-section
+│   │   │       ├── [divider]
+│   │   │       └── Manage / Support buttons
+│   │   └── #sidebar-footer
+│   └── #main
+│       ├── header#topbar
+│       ├── #date-filter-bar
+│       └── #view-area  (dashboard / table / gantt / kanban / settings / help / about)
+│
+└── JS (lines ~1940–end)
+    ├── DEFAULT_SETTINGS
+    ├── WorkCalendar
+    ├── AppState          getFilteredTasks supports filters.selectedDate
+    ├── GlobalFilter      NEW — shared date filter state
+    ├── grp()
+    ├── Storage
+    ├── App
+    ├── TaskModal
+    ├── Dashboard         filters tasks by GlobalFilter.selectedDate
+    ├── TableView         merges GlobalFilter.selectedDate on every render
+    ├── KanbanView        applies GlobalFilter.selectedDate in _getFilteredTasks
+    ├── GanttFilters
+    ├── Gantt             applies filter, scrolls to date, draws guide line
+    ├── Settings          renders calendar settings; saveCalendarSettings()
+    ├── SidebarCalendar   NEW — renders sidebar calendar
+    ├── Toast
+    └── Report
+```
+
+---
+
+## Conventions to know
+
+- `escHtml()` — use for **all** user content in template strings, including `value="..."` attributes.
+- `Storage.markDirty()` — at mutation sites (debounced 400 ms). `Storage.save()` only for immediate writes.
+- `GlobalFilter` state is runtime-only — never write it to `AppState.settings`.
+- After any fix: bump `APP_BASE_VERSION` MINOR, update Help/About in-app views, update `TODO.md`, commit.
+- Stage only `WIPflow.html` and intentionally changed markdown files. Never commit `.labwip`, CSV, or temp files.
+
+---
+
+## If you pick this up next
+
+There are no open TODO items. Possible future directions (all deferred from the v2.1 spec):
+
+- Calendar click action: "Open Task List" mode (currently only "Filter Tasks")
+- Date range / multi-day selection (extend `GlobalFilter` to `{startDate, endDate}`)
+- Task creation from calendar (wire `SidebarCalendar.selectDate` to open `TaskModal` with a pre-filled date)
+- Week view / agenda view in the sidebar calendar

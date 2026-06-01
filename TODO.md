@@ -1,7 +1,7 @@
 # WIP Flow — Development TODO
 
 Items grouped by priority. Bugs are confirmed against the current source (`WIPflow.html`).
-Last analysis: 2026-06-02 (full source review of all modules).
+Last analysis: 2026-06-02 (full source review of all modules). v2.1 merged to master.
 
 ---
 

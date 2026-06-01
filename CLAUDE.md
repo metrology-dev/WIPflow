@@ -19,7 +19,7 @@ No build or lint commands exist. To develop:
 
 ## Architecture
 
-The entire application lives in `WIPflow.html` (~4 600 lines), structured as a sequence of named JS object modules. Execution order matters — modules are defined in dependency order and reference each other by name.
+The entire application lives in `WIPflow.html` (~4 830 lines), structured as a sequence of named JS object modules. Execution order matters — modules are defined in dependency order and reference each other by name.
 
 ### Modules (in declaration order)
 
