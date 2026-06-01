@@ -1,17 +1,33 @@
 # WIP Flow — Development TODO
 
 Items grouped by priority. Bugs are confirmed against the current source (`WIPflow.html`).
-Last analysis: 2026-06-01 (full source review of all modules).
+Last analysis: 2026-06-02 (full source review of all modules).
 
 ---
 
 ## ToDo
 
-_(no open items)_
+*No pending items — see Completed.*
 
 ---
 
 ## ✅ Completed
+
+### v2.1 (2026-06-02)
+
+**Calendar Sidebar and global date filtering**
+
+- Calendar Sidebar: compact month calendar in the left sidebar below the navigation menu; shows month/year header, ‹/›/Today navigation, ISO 8601 and US-style week numbers, weekday headers, and task activity dots beneath each day
+- Activity dots: up to 3 dots per day — red (Blocked/Overdue), green (Active/On Hold), outline (Not Started); Completed tasks show no dots; hover tooltip shows exact counts per category
+- Global date filter (`GlobalFilter` module): clicking a day sets `selectedDate`; clicking the same day again clears it; a banner below the topbar shows the active date and a Clear button
+- Filtering: all views (Dashboard, Table, Gantt, Kanban) respect `GlobalFilter.selectedDate` — filter logic: `task.startDate <= date <= task.endDate`
+- Gantt: when date filter is active, timeline auto-scrolls to the selected date and draws an accent-coloured dashed guide line
+- Dashboard: KPI cards and charts recalculate using the date-filtered task set; clear empty state message when no tasks match
+- Calendar is collapsible via the section header to reclaim vertical space
+- Settings → Calendar: week numbering (ISO 8601 / US), first day of week (Monday / Sunday), show/hide adjacent-month days
+- New state: `GlobalFilter.selectedDate` (runtime only, not persisted)
+- New settings keys: `calendarWeekNumbering`, `calendarFirstDay`, `calendarShowOutsideDays`
+- New modules: `GlobalFilter`, `SidebarCalendar`
 
 ### v2.0 (2026-06-01)
 
@@ -163,3 +179,5 @@ Restructured body into `#gantt-body-outer` / `#gantt-task-panel` / `#gantt-body-
 - Escaping helper is `escHtml()` — use it for **all** user-derived content in template strings, including `<option value="...">` attributes.
 - Internal field names (`task.lab`, `settings.labs`, `f-lab`, `chart-lab`) are intentionally kept as "lab" for backwards compatibility; only user-facing labels are driven by `grp()`.
 - `Report` module: add new sections to `Report.SECTIONS` array and handle them in `Report._render()`; canvas sections require the corresponding view to be pre-rendered in `Report._run()`.
+- `GlobalFilter.selectedDate` is runtime-only state (not persisted to localStorage or embedded data). Calendar display settings (`calendarWeekNumbering`, `calendarFirstDay`, `calendarShowOutsideDays`) are persisted in `AppState.settings`.
+- `SidebarCalendar` depends on `GlobalFilter` being declared first; `GlobalFilter._apply()` calls `SidebarCalendar.render()` and `App.refresh()` — both must be defined before first use (they are, since `App.init()` runs after all module declarations).

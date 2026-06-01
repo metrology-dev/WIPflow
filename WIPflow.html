@@ -233,6 +233,162 @@ input, select, textarea { font-family: var(--font); }
   gap: 4px;
 }
 
+/* ── SIDEBAR SCROLL AREA (wraps nav + calendar) ── */
+#sidebar-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+#sidebar-nav {
+  /* override the old flex:1 — let the scroll area own the growth */
+  flex: 0 0 auto;
+}
+
+/* ── SIDEBAR CALENDAR SECTION ── */
+#sidebar-calendar-section {
+  flex-shrink: 0;
+}
+
+.cal-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.cal-section-header:hover { background: var(--bg-3); }
+
+#sidebar-calendar {
+  padding: 4px 8px 10px;
+}
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-bottom: 5px;
+}
+.cal-month-title {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-nav-btn {
+  background: none;
+  border: none;
+  padding: 2px 5px;
+  border-radius: var(--radius);
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.cal-nav-btn:hover { background: var(--bg-3); color: var(--text); }
+.cal-today-btn {
+  background: none;
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  border-radius: var(--radius);
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 10px;
+  font-family: var(--font);
+  flex-shrink: 0;
+}
+.cal-today-btn:hover { background: var(--bg-3); color: var(--text); }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: 20px repeat(7, 1fr);
+  gap: 1px 0;
+}
+.cal-hdr {
+  font-size: 10px;
+  color: var(--text-3);
+  text-align: center;
+  padding: 2px 0 3px;
+  line-height: 1;
+}
+.cal-wk {
+  font-size: 9px;
+  color: var(--text-3);
+  text-align: center;
+  line-height: 20px;
+  opacity: 0.7;
+}
+.cal-day {
+  text-align: center;
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 1px 0 2px;
+}
+.cal-day:hover { background: var(--bg-3); }
+.cal-day-num {
+  font-size: 11px;
+  line-height: 20px;
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin: 0 auto;
+}
+.cal-day-today .cal-day-num {
+  color: var(--accent);
+  font-weight: 700;
+}
+.cal-day-selected {
+  box-shadow: inset 0 0 0 2px var(--accent-2);
+}
+.cal-day-outside { opacity: 0.35; }
+.cal-day-dots {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  height: 5px;
+  align-items: center;
+}
+.cal-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cal-dot-active  { background: var(--green); }
+.cal-dot-overdue { background: var(--red); }
+.cal-dot-planned { border: 1.5px solid var(--text-3); background: transparent; width: 3px; height: 3px; }
+
+/* ── DATE FILTER BAR ── */
+#date-filter-bar {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px;
+  background: var(--accent-hl);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+.date-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 1px 10px 1px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
 /* ── MAIN ── */
 #main {
   flex: 1;
@@ -1307,39 +1463,53 @@ tr.overdue td.td-name { color: var(--red); }
       </div>
     </div>
 
-    <nav id="sidebar-nav" aria-label="Main navigation">
-      <div class="nav-section-label">Views</div>
-      <button class="nav-item active" data-view="dashboard" onclick="App.switchView('dashboard')" aria-current="page" aria-label="Dashboard view">
-        <span class="nav-icon" aria-hidden="true">◈</span> Dashboard
-      </button>
-      <button class="nav-item" data-view="table" onclick="App.switchView('table')" aria-label="Table view">
-        <span class="nav-icon" aria-hidden="true">≡</span> Table
-        <span class="nav-badge" id="nav-badge-table" aria-label="active tasks">0</span>
-      </button>
-      <button class="nav-item" data-view="gantt" onclick="App.switchView('gantt')" aria-label="Gantt chart view">
-        <span class="nav-icon" aria-hidden="true">▤</span> Gantt
-      </button>
-      <button class="nav-item" data-view="kanban" onclick="App.switchView('kanban')" aria-label="Kanban board view">
-        <span class="nav-icon" aria-hidden="true">⊞</span> Kanban
-      </button>
+    <div id="sidebar-scroll-area">
 
-      <div class="divider" style="margin:10px 0" role="separator"></div>
-      <div class="nav-section-label">Manage</div>
+      <nav id="sidebar-nav" aria-label="Main navigation">
+        <div class="nav-section-label">Views</div>
+        <button class="nav-item active" data-view="dashboard" onclick="App.switchView('dashboard')" aria-current="page" aria-label="Dashboard view">
+          <span class="nav-icon" aria-hidden="true">◈</span> Dashboard
+        </button>
+        <button class="nav-item" data-view="table" onclick="App.switchView('table')" aria-label="Table view">
+          <span class="nav-icon" aria-hidden="true">≡</span> Table
+          <span class="nav-badge" id="nav-badge-table" aria-label="active tasks">0</span>
+        </button>
+        <button class="nav-item" data-view="gantt" onclick="App.switchView('gantt')" aria-label="Gantt chart view">
+          <span class="nav-icon" aria-hidden="true">▤</span> Gantt
+        </button>
+        <button class="nav-item" data-view="kanban" onclick="App.switchView('kanban')" aria-label="Kanban board view">
+          <span class="nav-icon" aria-hidden="true">⊞</span> Kanban
+        </button>
 
-      <button class="nav-item" data-view="settings" onclick="App.switchView('settings')" aria-label="Settings">
-        <span class="nav-icon" aria-hidden="true">⚙</span> Settings
-      </button>
+        <!-- ── SIDEBAR CALENDAR ── -->
+        <div class="divider" style="margin:10px 0" role="separator"></div>
+        <div id="sidebar-calendar-section">
+          <div class="cal-section-header" onclick="SidebarCalendar.toggleCollapse()" title="Toggle calendar">
+            <div class="nav-section-label" style="padding:0;margin:0">Calendar</div>
+            <span id="cal-collapse-icon" style="font-size:9px;color:var(--text-3)">▼</span>
+          </div>
+          <div id="sidebar-calendar"></div>
+        </div>
 
-      <div class="divider" style="margin:10px 0" role="separator"></div>
-      <div class="nav-section-label">Support</div>
+        <div class="divider" style="margin:10px 0" role="separator"></div>
+        <div class="nav-section-label">Manage</div>
 
-      <button class="nav-item" data-view="help" onclick="App.switchView('help')" aria-label="Help">
-        <span class="nav-icon" aria-hidden="true">?</span> Help
-      </button>
-      <button class="nav-item" data-view="about" onclick="App.switchView('about')" aria-label="About">
-        <span class="nav-icon" aria-hidden="true">ℹ</span> About
-      </button>
-    </nav>
+        <button class="nav-item" data-view="settings" onclick="App.switchView('settings')" aria-label="Settings">
+          <span class="nav-icon" aria-hidden="true">⚙</span> Settings
+        </button>
+
+        <div class="divider" style="margin:10px 0" role="separator"></div>
+        <div class="nav-section-label">Support</div>
+
+        <button class="nav-item" data-view="help" onclick="App.switchView('help')" aria-label="Help">
+          <span class="nav-icon" aria-hidden="true">?</span> Help
+        </button>
+        <button class="nav-item" data-view="about" onclick="App.switchView('about')" aria-label="About">
+          <span class="nav-icon" aria-hidden="true">ℹ</span> About
+        </button>
+      </nav>
+
+    </div><!-- /sidebar-scroll-area -->
 
     <div id="sidebar-footer">
       <button class="btn btn-primary btn-sm" onclick="TaskModal.open()" style="width:100%;justify-content:center">
@@ -1379,6 +1549,14 @@ tr.overdue td.td-name { color: var(--red); }
         <input type="file" id="import-file-input" accept=".labwip,.json" style="display:none" onchange="Storage.handleImport(event)">
       </div>
     </header>
+
+    <!-- DATE FILTER BAR — visible when a calendar date is selected -->
+    <div id="date-filter-bar">
+      <span aria-hidden="true">📅</span>
+      <span>Date filter active:</span>
+      <span id="date-filter-label" class="date-filter-chip"></span>
+      <button class="btn btn-ghost btn-sm" onclick="GlobalFilter.clearDate()" style="font-size:11px;padding:2px 8px;margin-left:2px">✕ Clear</button>
+    </div>
 
     <!-- VIEW AREA -->
     <div id="view-area">
@@ -1713,6 +1891,32 @@ tr.overdue td.td-name { color: var(--red); }
             </div>
 
             <div class="card">
+              <div class="card-header"><span class="card-title">Calendar</span></div>
+              <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">Week Numbering</label>
+                    <select class="form-control" id="setting-cal-week-numbering" onchange="Settings.saveCalendarSettings()">
+                      <option value="iso">ISO 8601 (Mon, W1 = Jan 4)</option>
+                      <option value="us">US Style (Sun, W1 = Jan 1)</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">First Day of Week</label>
+                    <select class="form-control" id="setting-cal-first-day" onchange="Settings.saveCalendarSettings()">
+                      <option value="mon">Monday</option>
+                      <option value="sun">Sunday</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group" style="flex-direction:row;align-items:center;gap:10px">
+                  <input type="checkbox" id="setting-cal-show-outside" onchange="Settings.saveCalendarSettings()" style="accent-color:var(--accent)">
+                  <label for="setting-cal-show-outside" class="form-label" style="margin:0;cursor:pointer">Show days from adjacent months</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
               <div class="card-header"><span class="card-title">Data Management</span></div>
               <div class="data-actions">
                 <div style="font-size:12px;color:var(--text-3);line-height:1.6;padding:2px 0 6px">
@@ -1790,6 +1994,24 @@ tr.overdue td.td-name { color: var(--red); }
               <p><strong>Table</strong> — Sortable, filterable grid. Click any column header to sort; click again to reverse. Use the filter dropdowns and the search box to narrow results. Click any row to edit.</p>
               <p><strong>Gantt</strong> — Canvas timeline with four zoom levels: <em>Day</em>, <em>Week</em>, <em>Month</em>, and <em>Year</em>. Year zoom auto-scales to fill the available area. Hover over a bar for a full tooltip. Click <strong>Today</strong> to scroll to the current date. Drag the panel divider to resize the task list. Bar colour = priority; fill level = progress.</p>
               <p><strong>Kanban</strong> — Cards grouped by status column. Drag a card to a different column to change its status. Filter by lab or person using the dropdowns above the board.</p>
+            </div>
+          </div>
+
+          <!-- Calendar Sidebar -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">Calendar Sidebar</span></div>
+            <div class="doc-body">
+              <p>The compact calendar below the navigation menu gives a visual overview of task activity and doubles as a global date filter.</p>
+              <p><strong>Task activity dots</strong> appear beneath each day number:</p>
+              <dl class="doc-kv">
+                <dt>● Green (filled)</dt><dd>One or more Active or On Hold tasks span this day.</dd>
+                <dt>○ Outline</dt><dd>One or more Not Started tasks are planned for this day.</dd>
+                <dt>● Red (filled)</dt><dd>One or more Blocked or Overdue tasks overlap this day.</dd>
+              </dl>
+              <p>Up to three dots are shown per day (overdue, then active, then planned). Hover over a day for exact task counts.</p>
+              <p><strong>Filtering:</strong> Click any date to activate a global date filter. A banner appears below the toolbar showing the selected date; all views — Dashboard, Table, Gantt, and Kanban — update immediately to show only tasks active on that date. Click the same date again, or click <strong>✕ Clear</strong> in the banner, to remove the filter.</p>
+              <p><strong>Navigation:</strong> Use ‹ and › to step through months, or click <strong>Today</strong> to jump back to the current month. The calendar section can be collapsed by clicking the "Calendar" header to reclaim vertical space.</p>
+              <p><strong>Settings → Calendar</strong> controls week numbering (ISO 8601 or US style), first day of week (Monday or Sunday), and whether days from adjacent months are visible.</p>
             </div>
           </div>
 
@@ -1967,6 +2189,15 @@ tr.overdue td.td-name { color: var(--red); }
           <div class="card full">
             <div class="card-header"><span class="card-title">Changelog</span></div>
             <div class="doc-body">
+              <p><strong>v2.1</strong> — Calendar Sidebar with global date filtering</p>
+              <ul>
+                <li>Sidebar: compact calendar component below the navigation menu — shows the current month with weekday headers, week numbers (ISO 8601 or US style), and task activity dot indicators (green = active/on hold, outline = not started, red = blocked/overdue)</li>
+                <li>Global date filter: clicking a calendar day filters all views (Dashboard, Table, Gantt, Kanban) to show only tasks active on that date; a banner below the toolbar shows the active date and a Clear button</li>
+                <li>Gantt: when a date filter is active the timeline auto-scrolls to the selected date and draws an accent-colored dashed guide line</li>
+                <li>Dashboard: KPI cards and charts recalculate using the filtered task set; clear empty state when no tasks match the selected date</li>
+                <li>Settings → Calendar: week numbering (ISO 8601 / US), first day of week (Monday / Sunday), and show/hide adjacent month days</li>
+                <li>Calendar is collapsible via the section header to reclaim sidebar space on small screens</li>
+              </ul>
               <p><strong>v2.0</strong> — Grouping terminology, Report printing, and TODO restructure</p>
               <ul>
                 <li>Settings: "Laboratories" renamed to configurable "Groups" — change the singular/plural label under Settings → Group Terminology; all filters, chart titles, and modal labels update immediately</li>
@@ -2182,7 +2413,7 @@ tr.overdue td.td-name { color: var(--red); }
 // ================================================================
 // CONSTANTS & DEFAULT CONFIG
 // ================================================================
-const APP_BASE_VERSION = '2.0';  // MAJOR.MINOR — increment manually
+const APP_BASE_VERSION = '2.1';  // MAJOR.MINOR — increment manually
 const APP_VERSION = APP_BASE_VERSION;
 const STORAGE_KEY = 'labwip_data';
 
@@ -2199,6 +2430,9 @@ const DEFAULT_SETTINGS = {
   statuses:   ['Not Started', 'Active', 'On Hold', 'Blocked', 'Completed'],
   tags:       ['calibration', 'measurement', 'accreditation', 'maintenance', 'ISO-17025', 'urgent'],
   holidays:   [],   // YYYY-MM-DD strings excluded from workday calculations
+  calendarWeekNumbering:  'iso',  // 'iso' | 'us'
+  calendarFirstDay:       'mon',  // 'mon' | 'sun'
+  calendarShowOutsideDays: true,
 };
 
 /** Color map for priorities — CSS variable strings so theme changes apply */
@@ -2358,6 +2592,15 @@ const AppState = {
     if (filters.person)   list = list.filter(t => t.person === filters.person);
     if (filters.status)   list = list.filter(t => t.status === filters.status);
     if (filters.priority) list = list.filter(t => t.priority === filters.priority);
+    if (filters.selectedDate) {
+      const d = filters.selectedDate;
+      list = list.filter(t => {
+        if (t.startDate && t.endDate) return t.startDate <= d && d <= t.endDate;
+        if (t.startDate) return t.startDate === d;
+        if (t.endDate)   return t.endDate   === d;
+        return false;
+      });
+    }
 
     if (sortCol) {
       list.sort((a, b) => {
@@ -2387,6 +2630,45 @@ const AppState = {
 const grp = (plural) => plural
   ? (AppState.settings.groupPlural   || 'Groups')
   : (AppState.settings.groupSingular || 'Group');
+
+// ================================================================
+// GLOBAL DATE FILTER — shared state read by all views
+// ================================================================
+const GlobalFilter = {
+  selectedDate: null,  // YYYY-MM-DD or null
+
+  setDate(date) {
+    this.selectedDate = (this.selectedDate === date) ? null : date;
+    this._apply();
+  },
+
+  clearDate() {
+    this.selectedDate = null;
+    this._apply();
+  },
+
+  _apply() {
+    this._updateBar();
+    SidebarCalendar.render();
+    App.refresh();
+  },
+
+  _updateBar() {
+    const bar = document.getElementById('date-filter-bar');
+    const lbl = document.getElementById('date-filter-label');
+    if (!bar || !lbl) return;
+    if (this.selectedDate) {
+      const d = WorkCalendar.parse(this.selectedDate);
+      const label = d
+        ? d.toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })
+        : this.selectedDate;
+      lbl.textContent = label;
+      bar.style.display = 'flex';
+    } else {
+      bar.style.display = 'none';
+    }
+  }
+};
 
 // ================================================================
 // STORAGE — localStorage + portable self-contained HTML export
@@ -2717,6 +2999,7 @@ const App = {
     this.refresh();
     this.switchView('dashboard');
     Dashboard.initResizeObserver();
+    SidebarCalendar.init();
 
     // Autosave interval — driven by settings
     this.restartAutosave();
@@ -2795,6 +3078,9 @@ const App = {
     if (v === 'gantt')     Gantt.render();
     if (v === 'kanban')    KanbanView.render();
     if (v === 'settings')  Settings.render();
+
+    // Update calendar dots when task data changes
+    SidebarCalendar.render();
   },
 
   _seedDemoData() {
@@ -3081,7 +3367,17 @@ function conflictingTaskIds() {
 // ================================================================
 const Dashboard = {
   render() {
-    const tasks = AppState.tasks;
+    // Apply global date filter if active
+    const selDate = GlobalFilter.selectedDate;
+    const tasks = selDate
+      ? AppState.tasks.filter(t => {
+          if (t.startDate && t.endDate) return t.startDate <= selDate && selDate <= t.endDate;
+          if (t.startDate) return t.startDate === selDate;
+          if (t.endDate)   return t.endDate   === selDate;
+          return false;
+        })
+      : AppState.tasks;
+
     const today = WorkCalendar.today();
     const now   = new Date();
     now.setHours(0, 0, 0, 0);
@@ -3096,7 +3392,15 @@ const Dashboard = {
 
     if (tasks.length === 0) {
       const kpiGrid = document.getElementById('kpi-grid');
-      if (kpiGrid) kpiGrid.innerHTML = `<div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:12px;padding:32px 0;color:var(--text-3)"><div style="font-size:32px">🔬</div><div style="font-size:15px;font-weight:500;color:var(--text-2)">No tasks yet</div><div style="font-size:13px">Track your lab work-in-progress by creating your first task.</div><button class="btn btn-primary btn-sm" onclick="TaskModal.open()">+ Create your first task</button></div>`;
+      if (kpiGrid) {
+        if (selDate) {
+          const d = WorkCalendar.parse(selDate);
+          const lbl = d ? d.toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' }) : selDate;
+          kpiGrid.innerHTML = `<div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:12px;padding:32px 0;color:var(--text-3)"><div style="font-size:28px">📅</div><div style="font-size:15px;font-weight:500;color:var(--text-2)">No tasks on ${lbl}</div><div style="font-size:13px">No tasks are active or planned for this date. <button class="btn btn-ghost btn-sm" onclick="GlobalFilter.clearDate()" style="font-size:12px;vertical-align:baseline">Clear filter</button></div></div>`;
+        } else {
+          kpiGrid.innerHTML = `<div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:12px;padding:32px 0;color:var(--text-3)"><div style="font-size:32px">🔬</div><div style="font-size:15px;font-weight:500;color:var(--text-2)">No tasks yet</div><div style="font-size:13px">Track your lab work-in-progress by creating your first task.</div><button class="btn btn-primary btn-sm" onclick="TaskModal.open()">+ Create your first task</button></div>`;
+        }
+      }
       return;
     }
 
@@ -3397,7 +3701,8 @@ const TableView = {
   },
 
   render() {
-    const tasks = AppState.getFilteredTasks(this._filters||{}, this.sortCol, this.sortDir);
+    const filters = Object.assign({}, this._filters || {}, { selectedDate: GlobalFilter.selectedDate });
+    const tasks = AppState.getFilteredTasks(filters, this.sortCol, this.sortDir);
     const today = WorkCalendar.today();
     const tbody = document.getElementById('table-body');
     if (!tbody) return;
@@ -3643,6 +3948,13 @@ const KanbanView = {
     let tasks = [...AppState.tasks];
     if (this._filters.lab)    tasks = tasks.filter(t => t.lab    === this._filters.lab);
     if (this._filters.person) tasks = tasks.filter(t => t.person === this._filters.person);
+    const d = GlobalFilter.selectedDate;
+    if (d) tasks = tasks.filter(t => {
+      if (t.startDate && t.endDate) return t.startDate <= d && d <= t.endDate;
+      if (t.startDate) return t.startDate === d;
+      if (t.endDate)   return t.endDate   === d;
+      return false;
+    });
     return tasks;
   },
 
@@ -3723,6 +4035,13 @@ const Gantt = {
     if (fLab)    tasks = tasks.filter(t => t.lab    === fLab);
     if (fPerson) tasks = tasks.filter(t => t.person === fPerson);
     if (fStatus) tasks = tasks.filter(t => t.status === fStatus);
+    const d = GlobalFilter.selectedDate;
+    if (d) tasks = tasks.filter(t => {
+      if (t.startDate && t.endDate) return t.startDate <= d && d <= t.endDate;
+      if (t.startDate) return t.startDate === d;
+      if (t.endDate)   return t.endDate   === d;
+      return false;
+    });
     return tasks.filter(t => t.startDate || t.endDate).sort((a,b) => (a.startDate||'').localeCompare(b.startDate||''));
   },
 
@@ -3805,6 +4124,16 @@ const Gantt = {
 
     this._drawTimeline(tlCanvas, tlW);
     this._drawBars(canvas, tasks, canvasW);
+
+    // Scroll to selected date when global filter is active
+    if (GlobalFilter.selectedDate && this._startDate) {
+      const selD = WorkCalendar.parse(GlobalFilter.selectedDate);
+      const diff = WorkCalendar.daysBetween(this._startDate, selD);
+      if (diff >= 0 && diff <= this._totalDays) {
+        requestAnimationFrame(() => this._scrollTo(Math.max(0, diff * this.pixelsPerDay - 200)));
+      }
+    }
+
     this._bindWheelZoom();
     this._initResizeHandle();
 
@@ -4090,6 +4419,22 @@ const Gantt = {
       return { t, x1, x2, y1: i*RH, y2: (i+1)*RH };
     });
 
+    // Selected date guide line
+    if (GlobalFilter.selectedDate && this._startDate) {
+      const selD = WorkCalendar.parse(GlobalFilter.selectedDate);
+      const diff = WorkCalendar.daysBetween(this._startDate, selD);
+      if (diff >= 0 && diff < this._totalDays) {
+        const sx = diff * pd + pd / 2;
+        ctx.save();
+        ctx.strokeStyle = resolveColor('var(--accent)');
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, H); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+    }
+
     // Mouse tooltip
     this._bindTooltip(canvas);
   },
@@ -4245,6 +4590,14 @@ const Settings = {
     document.getElementById('theme-dark').classList.toggle('active',  s.theme !== 'light');
     document.getElementById('theme-light').classList.toggle('active', s.theme === 'light');
 
+    // Calendar settings
+    const calWeek = document.getElementById('setting-cal-week-numbering');
+    if (calWeek) calWeek.value = s.calendarWeekNumbering || 'iso';
+    const calFirst = document.getElementById('setting-cal-first-day');
+    if (calFirst) calFirst.value = s.calendarFirstDay || 'mon';
+    const calOuter = document.getElementById('setting-cal-show-outside');
+    if (calOuter) calOuter.checked = s.calendarShowOutsideDays !== false;
+
     // Sync group terminology labels and inputs
     const labsTitle = document.getElementById('settings-labs-card-title');
     if (labsTitle) labsTitle.textContent = grp(1);
@@ -4254,6 +4607,16 @@ const Settings = {
     if (singularInput) singularInput.value = s.groupSingular || 'Group';
     const pluralInput = document.getElementById('setting-group-plural');
     if (pluralInput) pluralInput.value = s.groupPlural || 'Groups';
+  },
+
+  saveCalendarSettings() {
+    const s = AppState.settings;
+    s.calendarWeekNumbering  = document.getElementById('setting-cal-week-numbering')?.value  || 'iso';
+    s.calendarFirstDay       = document.getElementById('setting-cal-first-day')?.value       || 'mon';
+    s.calendarShowOutsideDays = document.getElementById('setting-cal-show-outside')?.checked !== false;
+    Storage.save();
+    SidebarCalendar.render();
+    Toast.show('Calendar settings saved', 'success');
   },
 
   saveGroupTerminology() {
@@ -4403,6 +4766,181 @@ const Settings = {
     Storage.save();
     App.refresh();
     Toast.show('All data cleared', 'info');
+  }
+};
+
+// ================================================================
+// SIDEBAR CALENDAR
+// ================================================================
+const SidebarCalendar = {
+  _year: null,
+  _month: null,
+  _collapsed: false,
+
+  init() {
+    const now = new Date();
+    this._year  = now.getFullYear();
+    this._month = now.getMonth();
+    this.render();
+  },
+
+  navigate(delta) {
+    this._month += delta;
+    if (this._month < 0)  { this._month = 11; this._year--; }
+    if (this._month > 11) { this._month = 0;  this._year++; }
+    this.render();
+  },
+
+  goToday() {
+    const now = new Date();
+    this._year  = now.getFullYear();
+    this._month = now.getMonth();
+    this.render();
+  },
+
+  toggleCollapse() {
+    this._collapsed = !this._collapsed;
+    const body = document.getElementById('sidebar-calendar');
+    const icon = document.getElementById('cal-collapse-icon');
+    if (body) body.style.display = this._collapsed ? 'none' : '';
+    if (icon) icon.textContent   = this._collapsed ? '▶' : '▼';
+  },
+
+  selectDate(dateStr) {
+    GlobalFilter.setDate(dateStr);
+  },
+
+  render() {
+    const container = document.getElementById('sidebar-calendar');
+    if (!container) return;
+    if (this._collapsed) return;
+    if (this._year === null) return;
+
+    const year    = this._year;
+    const month   = this._month;
+    const today   = WorkCalendar.today();
+    const selDate = GlobalFilter.selectedDate;
+    const s       = AppState.settings;
+    const firstDay   = s.calendarFirstDay || 'mon';
+    const showOuter  = s.calendarShowOutsideDays !== false;
+    const weekMode   = s.calendarWeekNumbering || 'iso';
+
+    const dayNames = firstDay === 'sun'
+      ? ['Su','Mo','Tu','We','Th','Fr','Sa']
+      : ['Mo','Tu','We','Th','Fr','Sa','Su'];
+
+    const weeks = this._buildWeeks(year, month, firstDay);
+    const monthName = new Date(year, month, 1)
+      .toLocaleString('en-GB', { month:'long', year:'numeric' });
+
+    const wkHeader   = `<div class="cal-hdr" style="font-size:9px;opacity:.6">W</div>`;
+    const dayHeaders = dayNames.map(d => `<div class="cal-hdr">${d}</div>`).join('');
+
+    const rows = weeks.map(week => {
+      const anchor = week.find(c => c && !c.outside) || week.find(c => c);
+      const wkNum  = anchor ? this._weekNum(anchor.date, weekMode) : '';
+      const wkCell = `<div class="cal-wk">${wkNum}</div>`;
+      const dayCells = week.map(cell => {
+        if (!cell) return `<div></div>`;
+        const dateStr    = WorkCalendar.fmt(cell.date);
+        const isToday    = dateStr === today;
+        const isSelected = dateStr === selDate;
+        const isOutside  = cell.outside;
+        if (isOutside && !showOuter) return `<div></div>`;
+
+        let cls = 'cal-day';
+        if (isSelected)           cls += ' cal-day-selected';
+        else if (isToday)         cls += ' cal-day-today';
+        if (isOutside)            cls += ' cal-day-outside';
+
+        const dots  = this._computeDots(dateStr);
+        const tipParts = [];
+        if (dots.active  > 0) tipParts.push(`Active: ${dots.active}`);
+        if (dots.planned > 0) tipParts.push(`Planned: ${dots.planned}`);
+        if (dots.overdue > 0) tipParts.push(`Overdue: ${dots.overdue}`);
+        const tooltip = [dateStr, ...tipParts].join('\n');
+
+        return `<div class="${cls}" onclick="SidebarCalendar.selectDate('${dateStr}')" title="${tooltip}">
+          <span class="cal-day-num">${cell.date.getDate()}</span>
+          <div class="cal-day-dots">${this._dotHtml(dots)}</div>
+        </div>`;
+      }).join('');
+      return wkCell + dayCells;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="cal-nav">
+        <button class="cal-nav-btn" onclick="SidebarCalendar.navigate(-1)" title="Previous month">‹</button>
+        <span class="cal-month-title">${monthName}</span>
+        <button class="cal-nav-btn" onclick="SidebarCalendar.navigate(1)" title="Next month">›</button>
+        <button class="cal-today-btn" onclick="SidebarCalendar.goToday()" title="Go to today">Today</button>
+      </div>
+      <div class="cal-grid">
+        ${wkHeader}${dayHeaders}
+        ${rows}
+      </div>`;
+  },
+
+  _buildWeeks(year, month, firstDay) {
+    const firstOfMonth = new Date(year, month, 1);
+    const lastOfMonth  = new Date(year, month + 1, 0);
+    const dayOff = (dow) => firstDay === 'sun' ? dow : (dow + 6) % 7;
+
+    const startPad = dayOff(firstOfMonth.getDay());
+    const endPad   = (7 - 1 - dayOff(lastOfMonth.getDay())) % 7;
+
+    const cells = [];
+    for (let i = startPad - 1; i >= 0; i--) {
+      cells.push({ date: new Date(year, month, -i),    outside: true });
+    }
+    for (let d = 1; d <= lastOfMonth.getDate(); d++) {
+      cells.push({ date: new Date(year, month, d),      outside: false });
+    }
+    for (let i = 1; i <= endPad; i++) {
+      cells.push({ date: new Date(year, month + 1, i), outside: true });
+    }
+    const weeks = [];
+    for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+    return weeks;
+  },
+
+  _weekNum(date, mode) {
+    if (mode === 'us') {
+      const startOfYear = new Date(date.getFullYear(), 0, 1);
+      return Math.ceil((Math.floor((date - startOfYear) / 86400000) + 1 + startOfYear.getDay()) / 7);
+    }
+    // ISO 8601
+    const d = new Date(date.getTime());
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+    const w1 = new Date(d.getFullYear(), 0, 4);
+    return 1 + Math.round(((d - w1) / 86400000 - 3 + (w1.getDay() + 6) % 7) / 7);
+  },
+
+  _computeDots(dateStr) {
+    let active = 0, planned = 0, overdue = 0;
+    for (const t of AppState.tasks) {
+      if (!t.startDate || !t.endDate) continue;
+      if (t.startDate > dateStr || t.endDate < dateStr) continue;
+      const st = (t.status || '').toLowerCase();
+      if (st === 'completed') continue;
+      if (st === 'active' || st === 'on hold') active++;
+      else if (st === 'not started') planned++;
+      else if (st === 'blocked' || st === 'overdue') overdue++;
+    }
+    return { active, planned, overdue };
+  },
+
+  _dotHtml(dots) {
+    const MAX = 3;
+    const redN   = Math.min(dots.overdue, MAX);
+    const greenN = Math.min(dots.active,  MAX - redN);
+    const openN  = Math.min(dots.planned, MAX - redN - greenN);
+    const html   = [];
+    for (let i = 0; i < redN;   i++) html.push('<span class="cal-dot cal-dot-overdue"></span>');
+    for (let i = 0; i < greenN; i++) html.push('<span class="cal-dot cal-dot-active"></span>');
+    for (let i = 0; i < openN;  i++) html.push('<span class="cal-dot cal-dot-planned"></span>');
+    return html.join('');
   }
 };
 
