@@ -247,7 +247,6 @@ input, select, textarea { font-family: var(--font); }
 
 /* ── SIDEBAR CALENDAR SECTION ── */
 #sidebar-calendar-section {
-  border-top: 1px solid var(--border);
   flex-shrink: 0;
 }
 
@@ -342,13 +341,13 @@ input, select, textarea { font-family: var(--font); }
   margin: 0 auto;
 }
 .cal-day-today .cal-day-num {
-  background: var(--accent);
-  color: #fff;
+  color: var(--accent);
+  font-weight: 700;
 }
 .cal-day-selected .cal-day-num {
-  background: var(--accent-2);
+  background: var(--green);
   color: #fff;
-  box-shadow: 0 0 0 2px var(--accent-hl);
+  box-shadow: 0 0 0 2px var(--bg-2), 0 0 0 4px var(--green);
 }
 .cal-day-outside { opacity: 0.35; }
 .cal-day-dots {
@@ -1485,6 +1484,15 @@ tr.overdue td.td-name { color: var(--red); }
           <span class="nav-icon" aria-hidden="true">⊞</span> Kanban
         </button>
 
+        <!-- ── SIDEBAR CALENDAR ── -->
+        <div id="sidebar-calendar-section">
+          <div class="cal-section-header" onclick="SidebarCalendar.toggleCollapse()" title="Toggle calendar">
+            <div class="nav-section-label" style="padding:0;margin:0">Calendar</div>
+            <span id="cal-collapse-icon" style="font-size:9px;color:var(--text-3)">▼</span>
+          </div>
+          <div id="sidebar-calendar"></div>
+        </div>
+
         <div class="divider" style="margin:10px 0" role="separator"></div>
         <div class="nav-section-label">Manage</div>
 
@@ -1502,15 +1510,6 @@ tr.overdue td.td-name { color: var(--red); }
           <span class="nav-icon" aria-hidden="true">ℹ</span> About
         </button>
       </nav>
-
-      <!-- ── SIDEBAR CALENDAR ── -->
-      <div id="sidebar-calendar-section">
-        <div class="cal-section-header" onclick="SidebarCalendar.toggleCollapse()" title="Toggle calendar">
-          <div class="nav-section-label" style="padding:0;margin:0">Calendar</div>
-          <span id="cal-collapse-icon" style="font-size:9px;color:var(--text-3)">▼</span>
-        </div>
-        <div id="sidebar-calendar"></div>
-      </div>
 
     </div><!-- /sidebar-scroll-area -->
 
