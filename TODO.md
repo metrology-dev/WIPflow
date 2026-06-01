@@ -1,11 +1,18 @@
 # WIP Flow — Development TODO
 
 Items grouped by priority. Bugs are confirmed against the current source (`WIPflow.html`).
-Last analysis: 2026-05-31 (full source review of all modules).
+Last analysis: 2026-06-01 (full source review of all modules).
 
 ---
 
 ## ✅ Completed
+
+### v1.9 (2026-06-01)
+
+**Keyboard shortcuts and responsive charts**
+
+- Task modal: Enter key in any input field saves and closes the modal; Ctrl+Enter (Cmd+Enter on Mac) saves from a textarea without disrupting normal line breaks; event listeners are added in `_trapFocus()` and removed in `_releaseFocus()` — no leaks after close
+- Dashboard: Status Distribution / By Priority / By Laboratory chart row changed from CSS Grid to Flexbox (`flex-wrap: wrap`) with per-card `flex` grow weights set proportionally to bar counts — charts wrap onto new rows on medium screens and stack vertically on narrow screens; proportional sizing is preserved
 
 ### v1.8 (2026-05-31)
 
@@ -136,7 +143,7 @@ Restructured body into `#gantt-body-outer` / `#gantt-task-panel` / `#gantt-body-
 
 ## ToDo
 
-No backlog items. Add new items here as they are identified.
+_(no open items)_
 
 ---
 

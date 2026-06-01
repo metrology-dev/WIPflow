@@ -1,9 +1,9 @@
 # WIP Flow — Agent Handoff
 
 **Project:** WIPflow (`C:\Users\rosik\Sync\AI_Work\WIPflow`)
-**Last worked:** 2026-05-31
+**Last worked:** 2026-06-01
 **Git branch:** `master`
-**Current version:** `APP_BASE_VERSION = '1.8'` (in `WIPflow.html`; displayed as `v1.8.N`, where N = `saveVersion` auto-incremented on each "Save as HTML")
+**Current version:** `APP_BASE_VERSION = '1.9'` (in `WIPflow.html`; displayed as `v1.9.N`, where N = `saveVersion` auto-incremented on each "Save as HTML")
 
 ---
 
@@ -17,31 +17,25 @@ Architecture and conventions: [CLAUDE.md](CLAUDE.md) (current source of truth). 
 
 ## State at end of this session
 
-All design system improvements from the v1.8 sprint are **implemented and committed** in `WIPflow.html`. The app was verified in the browser preview — no console errors, all changed paths exercised in both light and dark mode.
+All items from the v1.9 sprint are **implemented and committed** in `WIPflow.html`. Verified in the browser preview — no console errors, all changed paths exercised.
 
-### What changed (full detail in [TODO.md](TODO.md) → v1.8 section)
+### What changed (full detail in [TODO.md](TODO.md) → v1.9 section)
 
-**Color system:**
+**Task modal keyboard shortcuts:**
 
-- Dark mode: more vibrant semantic colors — green `#3fb950`, red `#f85149`, purple `#a371f7`; deeper box-shadows; `--bg-4` (`#2d333b`) and `--border` (`#30363d`) are now distinct values so hover backgrounds and borders are visually separate.
-- Light mode: background shifted to `#f5f7fa` (slight blue tint); surfaces, borders, and hover states all slightly refined.
-- Both modes: `--badge-border-*` CSS custom properties added for each semantic color; badge CSS now uses these vars instead of hard-coded RGBA — fully themeable.
+- `_trapFocus()` now adds a third listener `_enterFn` alongside the existing `_trapFn` (Tab trap) and `_escFn` (Escape).
+- Enter from any non-textarea field calls `TaskModal.save()`.
+- Ctrl+Enter / Cmd+Enter from a textarea calls `TaskModal.save()`.
+- Plain Enter inside a textarea does nothing (normal newline behavior preserved).
+- `e.repeat` guard prevents double-saves on held key.
+- `_releaseFocus()` removes all three listeners and nulls them — no leaks after close.
 
-**Accessibility:**
+**Responsive Dashboard chart row:**
 
-- Dark mode `--text-3` raised from `#6e7681` (~4.2:1) to `#768390` (~4.5:1) — WCAG AA compliant for small text.
-- Light mode `--text-3` improved from `#8c959f` (~3.0:1 on white) to `#636b75` (~5.4:1) — strong WCAG AA pass.
-
-**Typography:**
-
-- `font-family: var(--mono)` removed from non-code labels: `.form-label`, `.data-table th`, `#gantt-left-header`, `.gantt-task-sub`, `.kanban-col-title`, `.nav-section-label`, `.nav-badge`, `#topbar-subtitle`.
-- Body copy normalised: 13.5 px → 14 px for `.nav-item` and `.doc-body`.
-- Card title reduced to 11 px / weight 700 for better visual hierarchy.
-
-**Charts and canvas:**
-
-- `PRIORITY_COLORS` and `STATUS_COLORS` constants changed to CSS variable strings (`var(--red)` etc.). The existing `_drawBarChart` CSS-var resolver handles Dashboard charts; a new top-level `resolveColor()` helper was added for Gantt bar rendering.
-- Gantt canvas: holiday highlights and today-marker line/triangle now use `--orange` / `--orange-bg` CSS variables rather than hard-coded `#e3622b` / `rgba(227,98,43,*)`.
+- `.dash-grid.triple` changed from `display: grid` to `display: flex; flex-wrap: wrap`.
+- `_redrawCharts()` now sets `flex: ${n} 1 150px` on each of the three card children (previously set `gridTemplateColumns`). Flex-grow weight equals the bar count for that chart, preserving proportional sizing.
+- At wide viewports all three charts sit on one row; at medium widths they wrap (2+1); at mobile they stack vertically.
+- The `@media (max-width: 1100px)` rule no longer overrides `.dash-grid.triple` — wrapping is handled automatically by flexbox.
 
 ---
 
@@ -63,7 +57,7 @@ All design system improvements from the v1.8 sprint are **implemented and commit
 
 ---
 
-## Design system (v1.8)
+## Design system (v1.8 — unchanged in v1.9)
 
 ### Dark mode CSS variables (`:root`)
 

@@ -494,10 +494,10 @@ textarea.form-control { resize: vertical; min-height: 70px; }
   gap: 16px;
 }
 
-.dash-grid.triple { grid-template-columns: 2fr 1fr 1fr; }
+.dash-grid.triple { display: flex; flex-wrap: wrap; }
 
 @media (max-width: 1100px) {
-  .dash-grid, .dash-grid.triple { grid-template-columns: 1fr; }
+  .dash-grid { grid-template-columns: 1fr; }
 }
 
 /* Chart canvas */
@@ -1955,6 +1955,11 @@ tr.overdue td.td-name { color: var(--red); }
           <div class="card full">
             <div class="card-header"><span class="card-title">Changelog</span></div>
             <div class="doc-body">
+              <p><strong>v1.9</strong> — Keyboard shortcuts and responsive charts</p>
+              <ul>
+                <li>Task modal: pressing <strong>Enter</strong> in any input field now saves and closes the modal; <strong>Ctrl+Enter</strong> (or Cmd+Enter on Mac) saves from a textarea without disrupting normal line breaks</li>
+                <li>Dashboard: Status Distribution / By Priority / By Laboratory charts now wrap onto additional rows on narrower screens instead of becoming cramped; relative proportions are preserved</li>
+              </ul>
               <p><strong>v1.8</strong> — Design system modernization</p>
               <ul>
                 <li>Color system: refined dark-mode palette — deeper shadows, more vibrant status/priority colors (green, red, purple), improved visual layering between surfaces</li>
@@ -2160,7 +2165,7 @@ tr.overdue td.td-name { color: var(--red); }
 // ================================================================
 // CONSTANTS & DEFAULT CONFIG
 // ================================================================
-const APP_BASE_VERSION = '1.8';  // MAJOR.MINOR — increment manually
+const APP_BASE_VERSION = '1.9';  // MAJOR.MINOR — increment manually
 const APP_VERSION = APP_BASE_VERSION;
 const STORAGE_KEY = 'labwip_data';
 
@@ -2871,15 +2876,26 @@ const TaskModal = {
       }
     };
     this._escFn = (e) => { if (e.key === 'Escape') this.close(); };
+    // Enter saves; Ctrl+Enter/Cmd+Enter saves from a textarea (plain Enter inserts a newline there)
+    this._enterFn = (e) => {
+      if (e.key !== 'Enter' || e.repeat) return;
+      const inTextarea = document.activeElement?.tagName === 'TEXTAREA';
+      if (inTextarea && !(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      this.save();
+    };
     document.addEventListener('keydown', this._trapFn);
     document.addEventListener('keydown', this._escFn);
+    document.addEventListener('keydown', this._enterFn);
   },
 
   _releaseFocus() {
-    if (this._trapFn) document.removeEventListener('keydown', this._trapFn);
-    if (this._escFn)  document.removeEventListener('keydown', this._escFn);
-    this._trapFn = null;
-    this._escFn  = null;
+    if (this._trapFn)  document.removeEventListener('keydown', this._trapFn);
+    if (this._escFn)   document.removeEventListener('keydown', this._escFn);
+    if (this._enterFn) document.removeEventListener('keydown', this._enterFn);
+    this._trapFn  = null;
+    this._escFn   = null;
+    this._enterFn = null;
   },
 
   save() {
@@ -3164,7 +3180,13 @@ const Dashboard = {
     const nLab      = Math.max(1, Object.keys(this._chartData.lab).length);
     const tripleGrid = document.querySelector('.dash-grid.triple');
     if (tripleGrid) {
-      tripleGrid.style.gridTemplateColumns = `${nStatus}fr ${nPriority}fr ${nLab}fr`;
+      // Flex-based proportional sizing: grow weight matches bar count, wraps when space is short
+      const cards = Array.from(tripleGrid.children);
+      if (cards.length >= 3) {
+        cards[0].style.flex = `${nStatus} 1 150px`;
+        cards[1].style.flex = `${nPriority} 1 150px`;
+        cards[2].style.flex = `${nLab} 1 150px`;
+      }
       void tripleGrid.offsetWidth; // force layout reflow so container widths are current
     }
     this._drawBarChart('chart-status',   this._chartData.status,   s => getStatusColor(s));
