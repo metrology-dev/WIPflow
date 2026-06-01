@@ -3,7 +3,7 @@
 **Project:** WIPflow (`C:\Users\rosik\Sync\AI_Work\WIPflow`)
 **Last worked:** 2026-06-01
 **Git branch:** `master`
-**Current version:** `APP_BASE_VERSION = '1.9'` (in `WIPflow.html`; displayed as `v1.9.N`, where N = `saveVersion` auto-incremented on each "Save as HTML")
+**Current version:** `APP_BASE_VERSION = '2.0'` (in `WIPflow.html`; displayed as `v1.9.N`, where N = `saveVersion` auto-incremented on each "Save as HTML")
 
 ---
 
@@ -17,25 +17,29 @@ Architecture and conventions: [CLAUDE.md](CLAUDE.md) (current source of truth). 
 
 ## State at end of this session
 
-All items from the v1.9 sprint are **implemented and committed** in `WIPflow.html`. Verified in the browser preview — no console errors, all changed paths exercised.
+All items from the v2.0 sprint are **implemented and committed** in `WIPflow.html`. Verified in the browser preview — no console errors, all changed paths exercised.
 
-### What changed (full detail in [TODO.md](TODO.md) → v1.9 section)
+### What changed (full detail in [TODO.md](TODO.md) → v2.0 section)
 
-**Task modal keyboard shortcuts:**
+**Grouping concept:**
 
-- `_trapFocus()` now adds a third listener `_enterFn` alongside the existing `_trapFn` (Tab trap) and `_escFn` (Escape).
-- Enter from any non-textarea field calls `TaskModal.save()`.
-- Ctrl+Enter / Cmd+Enter from a textarea calls `TaskModal.save()`.
-- Plain Enter inside a textarea does nothing (normal newline behavior preserved).
-- `e.repeat` guard prevents double-saves on held key.
-- `_releaseFocus()` removes all three listeners and nulls them — no leaks after close.
+- `DEFAULT_SETTINGS` gains `groupSingular: 'Group'` and `groupPlural: 'Groups'`.
+- Top-level `grp(plural)` helper reads from `AppState.settings` at call time — safe to call anywhere after init.
+- User-facing "Laboratory/Laboratories" replaced: Settings card title, add-input placeholder, Dashboard chart title (`#dash-lab-chart-title`), task modal label (`#modal-lab-label`), Table/Kanban/Gantt filter dropdowns, Help text.
+- Internal field names (`task.lab`, `settings.labs`, `f-lab`, etc.) are unchanged — no migration needed.
+- Settings → Group Terminology card: two inputs (Singular/Plural); `Settings.saveGroupTerminology()` saves and calls `App.refresh()` so all labels update immediately.
 
-**Responsive Dashboard chart row:**
+**Report Printing:**
 
-- `.dash-grid.triple` changed from `display: grid` to `display: flex; flex-wrap: wrap`.
-- `_redrawCharts()` now sets `flex: ${n} 1 150px` on each of the three card children (previously set `gridTemplateColumns`). Flex-grow weight equals the bar count for that chart, preserving proportional sizing.
-- At wide viewports all three charts sit on one row; at medium widths they wrap (2+1); at mobile they stack vertically.
-- The `@media (max-width: 1100px)` rule no longer overrides `.dash-grid.triple` — wrapping is handled automatically by flexbox.
+- New `Report` module with `SECTIONS` registry, `show()` dialog, `_run()` canvas capture, `_render()` HTML generation, `_showPreview()` full-screen overlay, `_doPrint()` page-style injection.
+- Canvas sections (Charts, Gantt) pre-render by switching views, then `canvas.toDataURL('image/png')` → `<img>` embeds.
+- `#print-report-container` added to body; `body.printing-report` class makes `@media print` show only the container.
+- `.rpt-*` CSS classes live outside `@media print` so they also style the preview overlay.
+- Old `Storage.printPDF()` button replaced with `Report.show()`.
+
+**TODO restructuring:**
+
+- File order: Title → ToDo → Completed → Notes for maintainers.
 
 ---
 
@@ -57,7 +61,7 @@ All items from the v1.9 sprint are **implemented and committed** in `WIPflow.htm
 
 ---
 
-## Design system (v1.8 — unchanged in v1.9)
+## Design system (v1.8 — unchanged in v2.0)
 
 ### Dark mode CSS variables (`:root`)
 

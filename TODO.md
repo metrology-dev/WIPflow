@@ -5,7 +5,21 @@ Last analysis: 2026-06-01 (full source review of all modules).
 
 ---
 
+## ToDo
+
+_(no open items)_
+
+---
+
 ## ✅ Completed
+
+### v2.0 (2026-06-01)
+
+**Grouping concept, Report Printing, TODO restructuring**
+
+- Grouping concept: "Laboratories" replaced with a configurable group terminology throughout the UI; `groupSingular`/`groupPlural` added to `DEFAULT_SETTINGS` (defaults: Group/Groups); new `grp(plural)` helper reads from `AppState.settings` at call time; Settings → Group Terminology card lets users rename to Department, Team, Project, etc.; all filter dropdowns, chart titles, modal labels, and card headers update immediately on save; internal data fields (`task.lab`, `settings.labs`, `f-lab`) preserved unchanged for backwards compatibility
+- Report Printing: replaced `Storage.printPDF()` with a new `Report` module; dialog offers section selection (Cover, Statistics, Dashboard KPIs, Charts, Workload, Task Table, Open Tasks, Completed Tasks, Gantt), paper size (A4/Letter), orientation (Portrait/Landscape), and date/title toggles; canvas sections (charts, Gantt) are captured as data-URL images and embedded in a dedicated `#print-report-container` div; Preview button shows full-screen preview before committing to print; `body.printing-report` class hides `#app` and reveals the container at `@media print`; `.rpt-*` CSS classes live outside the media query so they also apply to the preview overlay
+- TODO restructuring: section order changed to Title → ToDo → Completed → Notes for maintainers
 
 ### v1.9 (2026-06-01)
 
@@ -24,6 +38,7 @@ Last analysis: 2026-06-01 (full source review of all modules).
 - Typography: removed `font-family: var(--mono)` from non-code UI labels (form labels, table column headers, Gantt task-panel header, nav section labels, Kanban column titles); normalised 13.5 px → 14 px body copy
 - Charts: `PRIORITY_COLORS` and `STATUS_COLORS` changed to CSS variable strings (`var(--red)` etc.) resolved at render time — Gantt bars, dot indicators, and bar charts all use theme-correct colours
 - Gantt canvas: holiday and today-marker colours now read `--orange` / `--orange-bg` CSS variables; top-level `resolveColor()` helper added for safe canvas CSS-var resolution
+
 ### v1.7 (2026-05-31)
 
 **Bug: XLS export format warning**
@@ -141,14 +156,10 @@ Restructured body into `#gantt-body-outer` / `#gantt-task-panel` / `#gantt-body-
 
 ---
 
-## ToDo
-
-_(no open items)_
-
----
-
 ## Notes for maintainers
 
 - Single file, no build. Edit `WIPflow.html`, reload browser (Firefox primary).
 - After a fix: bump `APP_BASE_VERSION` MINOR, update in-app Help/About, update this file, commit.
 - Escaping helper is `escHtml()` — use it for **all** user-derived content in template strings, including `<option value="...">` attributes.
+- Internal field names (`task.lab`, `settings.labs`, `f-lab`, `chart-lab`) are intentionally kept as "lab" for backwards compatibility; only user-facing labels are driven by `grp()`.
+- `Report` module: add new sections to `Report.SECTIONS` array and handle them in `Report._render()`; canvas sections require the corresponding view to be pre-rendered in `Report._run()`.
