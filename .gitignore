@@ -8,9 +8,8 @@ notes_temp.txt
 *.tmp
 *.bak
 
-# Build artefacts for Icons working files
-Icons/*.ai
-Icons/logo_b64.txt
+# Icons source folder — logo embedded as base64 in WIPflow.html
+Icons/
 
 # OS
 Thumbs.db
