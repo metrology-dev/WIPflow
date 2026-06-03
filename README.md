@@ -180,10 +180,13 @@ Starting from the start date, the app counts forward that many calendar workdays
 WIP Flow is intentionally a single file with no build toolchain.
 
 ```
-WIPflow.html       # The entire application — ~4 830 lines of HTML/CSS/JS
+WIPflow.html       # The entire application — ~5 000 lines of HTML/CSS/JS
 CLAUDE.md          # Architecture notes and conventions for AI-assisted development
 TODO.md            # Backlog and completed change log
 HANDOFF.md         # Context for continuing development across sessions
+docs/
+  ARCHITECTURE.md  # Module map, data flow, and key conventions
+  DATA_SCHEMA.md   # Task and settings JSON schema reference
 ```
 
 To develop:
@@ -247,6 +250,7 @@ New settings keys added to `DEFAULT_SETTINGS` appear automatically for existing 
 
 ## Changelog
 
+- **v2.2** — New app logo; Settings page redesigned as vertically stacked full-width cards
 - **v2.1** — Calendar sidebar with global date filtering; activity dots; date filter bar; Settings → Calendar
 - **v2.0** — Configurable group terminology; print/export report dialog with section selection and preview
 - **v1.9** — Keyboard shortcuts in task modal; responsive chart layout

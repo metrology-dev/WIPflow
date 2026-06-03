@@ -1,6 +1,23 @@
-# Browser autosave artifacts (runtime data, not source)
+# Export files — generated data, not source
 *.labwip
+*.csv
+helger_2026.csv
+
+# Scratch / temp
+notes_temp.txt
+*.tmp
+*.bak
+
+# Build artefacts for Icons working files
+Icons/*.ai
+Icons/logo_b64.txt
 
 # OS
 Thumbs.db
 .DS_Store
+desktop.ini
+
+# Editor
+.vscode/
+*.swp
+*~

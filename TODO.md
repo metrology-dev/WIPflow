@@ -1,17 +1,41 @@
 # WIP Flow — Development TODO
 
 Items grouped by priority. Bugs are confirmed against the current source (`WIPflow.html`).
-Last analysis: 2026-06-02 (full source review of all modules). v2.1 merged to master.
+Last analysis: 2026-06-03 (v2.2 shipped — logo + Settings refactor). Master is clean.
 
 ---
 
 ## ToDo
 
-*No pending items — see Completed.*
+*(No open items.)*
 
 ---
 
 ## ✅ Completed
+
+### v2.2 (2026-06-03)
+
+**Logo update**
+
+- App logo replaced with new WIP Flow branding (`Icons/WIPFlow_logo_new_small.png` embedded as base64)
+- Updated across: favicon, sidebar logo (48 × 48 px), and About page hero
+- Removed old SVG base64 logo
+
+**Settings page layout refactoring**
+
+- `.settings-grid` changed from a two-column CSS grid to a vertically stacked flex column with `max-width: 900px` and `margin: 0 auto` — matches the single-column `.doc-grid` pattern used by Help/About
+- Removed the nested `<div style="display:flex;flex-direction:column">` wrapper that grouped the right-hand column cards; all cards are now direct children of `.settings-grid`
+- Added subtitle descriptions to each list-management card (Groups, Persons, Priority Levels, Task Statuses, Tags, Holiday Calendar)
+- Removed `grid-column: 1 / -1` span from Holiday Calendar (no longer needed in single-column layout)
+- No changes to business logic, state management, or any existing CSS component styles
+
+**GitHub preparation**
+
+- Added `.gitignore` covering export artefacts (`.labwip`, `.csv`), temp files, OS files, and editor files
+- Added `docs/ARCHITECTURE.md` — module map, data flow diagrams, and key conventions
+- Added `docs/DATA_SCHEMA.md` — full JSON schema reference for tasks and settings
+
+---
 
 ### v2.1 (2026-06-02)
 
