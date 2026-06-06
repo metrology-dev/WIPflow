@@ -1,6 +1,13 @@
 # WIP Flow — Data Schema
 
-WIP Flow stores all data in two places simultaneously: the browser's `localStorage` under the key `wipflow-data`, and a `<script id="labwip-embedded-data">` tag inside the HTML file itself. Both use the same JSON envelope.
+WIP Flow stores task data in up to four places simultaneously:
+
+- **`tasks.json`** — a file in a user-chosen folder via the File System Access API (Chrome/Edge only; optional)
+- **`tasks.backup.json`** — write-safe backup of the previous `tasks.json` state, created before every write
+- **Browser `localStorage`** — always active, under the key `labwip_data`; serves as a safety net when file storage is active and as the primary store in Firefox or when no folder is connected
+- **`<script id="labwip-embedded-data">`** — embedded inside the HTML file; kept in sync on every save so that the file is self-contained for the **↓ Save as HTML** export
+
+All four representations use the same JSON envelope.
 
 ---
 

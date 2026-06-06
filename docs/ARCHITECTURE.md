@@ -1,6 +1,6 @@
 # WIP Flow — Architecture
 
-WIP Flow is a single-file, offline-first HTML application. The entire application lives in `WIPflow.html` (~5 000 lines of inline HTML, CSS, and JavaScript). There is no build step, no package manager, and no transpilation.
+WIP Flow is a single-file, offline-first HTML application. The entire application lives in `WIPflow.html` (~5 800 lines of inline HTML, CSS, and JavaScript). There is no build step, no package manager, and no transpilation.
 
 ---
 
@@ -62,9 +62,12 @@ Modules are plain object literals with underscore-prefixed private methods. Orde
 | `DEFAULT_SETTINGS` | Constant seed values for labs, persons, priorities, statuses, tags, `saveVersion`, and calendar settings |
 | `WorkCalendar` | Date arithmetic: `isWorkday`, `calcEndDate(startStr, workdays, allocPct)`, `fmt`, `parse`. Skips weekends and configured holidays |
 | `AppState` | In-memory store: `tasks[]`, `settings{}`. CRUD via `saveTask`, `deleteTask`, `getTask`, `getFilteredTasks`. Serialised via `toJSON/fromJSON` |
-| `GlobalFilter` | Runtime-only shared filter state: `selectedDate` (YYYY-MM-DD or null). `setDate` / `clearDate` trigger `SidebarCalendar.render()` and `App.refresh()`. Never persisted |
 | `grp(plural)` | Helper function — reads `AppState.settings.groupSingular/groupPlural` and returns the correct label |
-| `Storage` | Persistence: `save()`, `exportHTML()`, `exportFile()`, `exportCSV()`, `exportXLS()`, `markDirty()` (debounced 400 ms) |
+| `GlobalFilter` | Runtime-only shared filter state: `selectedDate` (YYYY-MM-DD or null). `setDate` / `clearDate` trigger `SidebarCalendar.render()` and `App.refresh()`. Never persisted |
+| `IDB` | IndexedDB helper — `get/set/del(key)`. Persists `FileSystemDirectoryHandle` across browser sessions |
+| `FileSystemStorageProvider` | File System Access API wrapper. `chooseFolder`, `load`, `save` (write-safe: backup before write), `loadBackup`, `disconnect`. `supported` is `false` in Firefox |
+| `StorageManager` | Async startup orchestrator. Runs before `App.init()`. Handles provider selection, first-time setup overlay, localStorage migration, external-change detection, and page-lifecycle save hooks |
+| `Storage` | Persistence facade: `save()` delegates to `StorageManager._doSave()`; `exportHTML()`, `exportFile()`, `exportCSV()`, `exportXLS()`, `markDirty()` (debounced 500 ms). `load()` removed — loading handled by `StorageManager.init()` |
 | `App` | Lifecycle: `init()`, `refresh()`, `switchView(name)`, autosave timer |
 | `TaskModal` | Create/edit task dialog |
 | `Dashboard` | Canvas-based KPI cards and bar charts. Respects `GlobalFilter.selectedDate` |
@@ -85,13 +88,30 @@ Modules are plain object literals with underscore-prefixed private methods. Orde
 
 ```
 user action (TaskModal.save / KanbanView.onDrop / TableView inline edit)
-  └─► Storage.markDirty()          ← debounced 400 ms
+  └─► Storage.markDirty()                 ← debounced 500 ms
         └─► Storage.save()
-              ├─► localStorage.setItem(STORAGE_KEY, json)
-              └─► <script id="labwip-embedded-data"> updated in DOM
+              └─► StorageManager._doSave(json)
+                    ├─► localStorage.setItem(STORAGE_KEY, json)   ← always (safety net)
+                    ├─► <script id="labwip-embedded-data"> updated in DOM
+                    └─► FileSystemStorageProvider.save(json)       ← if folder connected
+                          ├─► tasks.json → tasks.backup.json       ← backup first
+                          └─► tasks.json ← new content
 ```
 
 Settings mutations (holiday add/remove, theme change, list edits) call `Storage.save()` directly for an immediate write.
+
+### Async startup
+
+```
+DOMContentLoaded (async)
+  └─► StorageManager.init()       ← runs BEFORE App.init()
+        ├─► FileSystemStorageProvider.init()   ← restore IDB handle + request permission
+        │     └─► load tasks.json → AppState
+        ├─► (or) show #setup-overlay           ← first launch in Chrome/Edge
+        └─► (or) _loadFromLocalStorage()       ← Firefox or no folder connected
+              └─► AppState.fromJSON(winner)
+  └─► App.init()
+```
 
 ### Portable export
 

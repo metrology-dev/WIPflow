@@ -19,7 +19,7 @@ No build or lint commands exist. To develop:
 
 ## Architecture
 
-The entire application lives in `WIPflow.html` (~4 830 lines), structured as a sequence of named JS object modules. Execution order matters — modules are defined in dependency order and reference each other by name.
+The entire application lives in `WIPflow.html` (~5 800 lines), structured as a sequence of named JS object modules. Execution order matters — modules are defined in dependency order and reference each other by name.
 
 ### Modules (in declaration order)
 
@@ -86,7 +86,7 @@ Version format: `MAJOR.MINOR.SAVE`
 - **MINOR** — Developer edits `APP_BASE_VERSION`. Use for bug fixes and small improvements.
 - **SAVE** — Incremented automatically each time the user clicks "Save as HTML".
 
-`APP_BASE_VERSION` is a constant near the top of the JS section (e.g. `const APP_BASE_VERSION = '1.6';`).
+`APP_BASE_VERSION` is a constant near the top of the JS section (e.g. `const APP_BASE_VERSION = '2.3';`).
 `saveVersion` lives in `AppState.settings` and persists in localStorage and embedded data.
 
 **Rule of thumb:** bump MINOR when shipping a fix or small feature; bump MAJOR for breaking changes.

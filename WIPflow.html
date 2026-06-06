@@ -2169,7 +2169,7 @@ tr.overdue td.td-name { color: var(--red); }
                 <li>Canvas Gantt timeline (day / week / month zoom)</li>
                 <li>Kanban board with drag-and-drop status changes</li>
                 <li>Workday end-date calculation with weekend and holiday skipping</li>
-                <li>Three-layer persistence: localStorage + embedded HTML data + .labwip JSON</li>
+                <li>Multi-layer persistence: file storage (<code>tasks.json</code> with write-safe backup), localStorage, embedded HTML data, and .labwip JSON export</li>
                 <li>Versioned HTML export (<code>MAJOR.MINOR.SAVE</code>)</li>
                 <li>Holiday calendar with CSV import</li>
                 <li>Dark and light themes</li>
@@ -2183,22 +2183,29 @@ tr.overdue td.td-name { color: var(--red); }
           <div class="card">
             <div class="card-header"><span class="card-title">Technical Architecture</span></div>
             <div class="doc-body">
-              <p>Single HTML file (~3 500 lines). All HTML, CSS, and JavaScript inline. No build step, no package manager, no transpilation.</p>
+              <p>Single HTML file (~5 800 lines). All HTML, CSS, and JavaScript inline. No build step, no package manager, no transpilation.</p>
               <p>JavaScript is structured as plain object literals (no classes):</p>
               <table class="doc-table">
                 <thead><tr><th>Module</th><th>Responsibility</th></tr></thead>
                 <tbody>
                   <tr><td>AppState</td><td>Central data store; task CRUD; filtering/sorting</td></tr>
-                  <tr><td>Storage</td><td>localStorage, embedded data, file export/import</td></tr>
+                  <tr><td>GlobalFilter</td><td>Runtime date filter shared by all views</td></tr>
+                  <tr><td>IDB</td><td>IndexedDB helper; persists folder handle</td></tr>
+                  <tr><td>FileSystemStorageProvider</td><td>File System Access API; write-safe saves</td></tr>
+                  <tr><td>StorageManager</td><td>Async startup orchestrator; provider selection</td></tr>
+                  <tr><td>Storage</td><td>Save facade; export/import; autosave indicator</td></tr>
                   <tr><td>WorkCalendar</td><td>Workday arithmetic; end date calculation</td></tr>
                   <tr><td>App</td><td>View routing; autosave timer; lifecycle</td></tr>
                   <tr><td>TaskModal</td><td>Create/edit task dialog</td></tr>
                   <tr><td>Dashboard</td><td>KPI cards; canvas charts; ResizeObserver</td></tr>
                   <tr><td>TableView</td><td>Sortable/filterable task grid</td></tr>
                   <tr><td>Gantt</td><td>Canvas timeline; scroll sync; tooltip</td></tr>
+                  <tr><td>GanttFilters</td><td>Filter state for the Gantt view</td></tr>
                   <tr><td>KanbanView</td><td>Drag-and-drop status columns</td></tr>
-                  <tr><td>Settings</td><td>List editors; theme; autosave; holidays</td></tr>
+                  <tr><td>Settings</td><td>List editors; theme; autosave; storage; holidays</td></tr>
+                  <tr><td>SidebarCalendar</td><td>Month calendar with activity dots and date filter</td></tr>
                   <tr><td>Toast</td><td>Non-blocking notifications</td></tr>
+                  <tr><td>Report</td><td>Print/export report dialog</td></tr>
                 </tbody>
               </table>
               <p>Canvas is used for Dashboard charts and the Gantt timeline. All other views are rendered via template-literal HTML strings assigned to <code>innerHTML</code>.</p>
