@@ -14,6 +14,7 @@ WIP Flow runs entirely in your browser. Download one HTML file, open it, and sta
 - **Kanban board** — drag-and-drop cards grouped by status, with keyboard-accessible move controls
 - **Calendar sidebar** — month calendar with task activity dots; click any date to filter all views simultaneously
 - **Print / export report** — configurable sections, paper size, and orientation; preview before printing
+- **File storage** — connect a folder once; tasks save to `tasks.json` automatically with a write-safe backup; survives browser cache clearing (Chrome/Edge)
 - **Export formats** — self-contained HTML, `.labwip` JSON backup, CSV, Excel (SpreadsheetML)
 - **Dark and light themes**
 - **Fully configurable** — rename groups, persons, statuses, priorities, tags, and holidays to match your workflow
@@ -101,19 +102,25 @@ The calendar section can be collapsed by clicking the **Calendar** header.
 
 ## Saving & Portability
 
-WIP Flow uses three complementary layers so your data is never lost:
+WIP Flow uses multiple complementary layers so your data is never lost:
 
-**1 — localStorage (automatic)**
-Every change is saved to the browser's localStorage within 400 ms. A save indicator in the sidebar turns green after each write. _Limitation:_ localStorage is scoped to the file path — moving the HTML file resets the connection.
+**1 — File storage (Chrome/Edge, recommended)**
+Connect a folder once via **Settings → Storage → Connect Folder**. WIP Flow saves tasks to `tasks.json` in that folder after every change. Before each write, the previous file is backed up to `tasks.backup.json` — if `tasks.json` is ever corrupted, the backup is restored automatically on startup. The 📁 prefix in the save indicator confirms file storage is active. Tasks in a file survive browser cache clearing and can be copied to other computers.
 
-**2 — Embedded data (self-contained HTML)**
-On every save, the full dataset is written into a `<script>` tag inside the HTML in memory. Clicking **↓ Save as HTML** downloads a versioned self-contained copy with all data embedded. Open that file anywhere, on any machine, without needing localStorage.
+**2 — localStorage (always active, safety net)**
+Every save also writes to browser localStorage. When file storage is active this is an additional safety net. _Limitation:_ localStorage is scoped to the file URL — moving `WIPflow.html` to a different folder loses the association.
 
-**3 — `.labwip` JSON export**
+**3 — Embedded data (self-contained HTML)**
+On every save the full dataset is written into a `<script>` tag inside the HTML in memory. Clicking **↓ Save as HTML** downloads a versioned self-contained copy with all data embedded. Open it on any machine, any browser, without needing localStorage or a folder.
+
+**4 — `.labwip` JSON export**
 **Settings → Data Management → Export .labwip** downloads a plain JSON snapshot. Import it with **↓ Import** in the topbar to restore data into any copy of WIP Flow.
 
-**Recommended workflow:**
-Work normally (layer 1 handles daily saves). Periodically click **↓ Save as HTML** and replace your working `WIPflow.html` with the downloaded file. When moving to a new machine, copy that file — it carries everything.
+**Recommended workflow (Chrome/Edge):**
+On first launch, choose a folder. From then on, tasks save automatically — nothing else to do. Copy the `tasks.json` file to move your data to another machine.
+
+**Recommended workflow (Firefox or any browser):**
+Work normally (localStorage handles daily saves). Periodically click **↓ Save as HTML** and replace your working `WIPflow.html` with the downloaded file.
 
 **Version numbers** take the form `MAJOR.MINOR.SAVE`. The SAVE counter increments automatically on each **↓ Save as HTML**, giving every exported file a unique, monotonically increasing identifier.
 
@@ -147,6 +154,7 @@ Starting from the start date, the app counts forward that many calendar workdays
 | Autosave | Periodic save interval in minutes (0 to disable) |
 | Group Terminology | Rename the grouping concept (singular + plural) |
 | Calendar | Week numbering, first day of week, show adjacent-month days |
+| Storage | Connect/disconnect a file storage folder; shows current provider and folder name |
 | Data Management | Export HTML, export/import `.labwip`, export CSV, export Excel, print report, clear all data |
 
 ---
@@ -180,7 +188,7 @@ Starting from the start date, the app counts forward that many calendar workdays
 WIP Flow is intentionally a single file with no build toolchain.
 
 ```
-WIPflow.html       # The entire application — ~5 000 lines of HTML/CSS/JS
+WIPflow.html       # The entire application — ~5 800 lines of HTML/CSS/JS
 CLAUDE.md          # Architecture notes and conventions for AI-assisted development
 TODO.md            # Backlog and completed change log
 HANDOFF.md         # Context for continuing development across sessions
@@ -250,6 +258,7 @@ New settings keys added to `DEFAULT_SETTINGS` appear automatically for existing 
 
 ## Changelog
 
+- **v2.3** — File storage with File System Access API; `tasks.json` with write-safe backup; first-time setup; migration from localStorage; external-change detection; Settings → Storage card
 - **v2.2** — New app logo; Settings page redesigned as vertically stacked full-width cards
 - **v2.1** — Calendar sidebar with global date filtering; activity dots; date filter bar; Settings → Calendar
 - **v2.0** — Configurable group terminology; print/export report dialog with section selection and preview
