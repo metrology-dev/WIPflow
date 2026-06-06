@@ -1,6 +1,6 @@
 # WIP Flow — Architecture
 
-WIP Flow is a single-file, offline-first HTML application. The entire application lives in `WIPflow.html` (~5 800 lines of inline HTML, CSS, and JavaScript). There is no build step, no package manager, and no transpilation.
+WIP Flow is a single-file, offline-first HTML application. The entire application lives in `WIPflow.html` (~5 900 lines of inline HTML, CSS, and JavaScript). There is no build step, no package manager, and no transpilation.
 
 ---
 
@@ -59,9 +59,11 @@ Modules are plain object literals with underscore-prefixed private methods. Orde
 
 | Module | Responsibility |
 |--------|---------------|
-| `DEFAULT_SETTINGS` | Constant seed values for labs, persons, priorities, statuses, tags, `saveVersion`, and calendar settings |
+| `DEFAULT_SETTINGS` | Constant seed values for labs, persons, priorities, statuses (as `{name, activityCategory}[]`), tags, `saveVersion`, and calendar settings |
+| `ACTIVITY_CATEGORIES` | Constant object keyed by category (`planned`, `active`, `problem`, `none`); each entry has `label` and `dot` fields. Single authoritative source for valid category values |
+| `migrateStatusCategory(name)` | Helper — maps a legacy status name to its `activityCategory` using case-insensitive lookup; returns `'none'` for unknown names |
 | `WorkCalendar` | Date arithmetic: `isWorkday`, `calcEndDate(startStr, workdays, allocPct)`, `fmt`, `parse`. Skips weekends and configured holidays |
-| `AppState` | In-memory store: `tasks[]`, `settings{}`. CRUD via `saveTask`, `deleteTask`, `getTask`, `getFilteredTasks`. Serialised via `toJSON/fromJSON` |
+| `AppState` | In-memory store: `tasks[]`, `settings{}`. CRUD via `saveTask`, `deleteTask`, `getTask`, `getFilteredTasks`. `fromJSON` auto-migrates legacy string statuses. Serialised via `toJSON/fromJSON` |
 | `grp(plural)` | Helper function — reads `AppState.settings.groupSingular/groupPlural` and returns the correct label |
 | `GlobalFilter` | Runtime-only shared filter state: `selectedDate` (YYYY-MM-DD or null). `setDate` / `clearDate` trigger `SidebarCalendar.render()` and `App.refresh()`. Never persisted |
 | `IDB` | IndexedDB helper — `get/set/del(key)`. Persists `FileSystemDirectoryHandle` across browser sessions |
@@ -75,8 +77,8 @@ Modules are plain object literals with underscore-prefixed private methods. Orde
 | `KanbanView` | Kanban board with drag-and-drop. Respects `GlobalFilter.selectedDate` |
 | `GanttFilters` | Filter state for the Gantt view |
 | `Gantt` | Canvas timeline with zoom levels. Auto-scrolls and draws guide line when date filter is active |
-| `Settings` | Settings page rendering and mutation handlers |
-| `SidebarCalendar` | Sidebar calendar component with activity dots and date selection |
+| `Settings` | Settings page rendering and mutation handlers. `_renderStatusList` renders status rows with Activity Category dropdowns; `setStatusCategory` updates and re-saves |
+| `SidebarCalendar` | Sidebar calendar component with activity dots and date selection. `_computeDots` looks up each task status's `activityCategory` via a `Map`; no hard-coded status names |
 | `Toast` | Non-blocking notification toasts |
 | `Report` | Print/export report dialog |
 
@@ -143,6 +145,7 @@ GlobalFilter.setDate(date) / GlobalFilter.clearDate()
 - **Inline HTML** — views assign template-literal strings to `el.innerHTML`. Always escape user content with `escHtml()`.
 - **`markDirty()` vs `save()`** — use `markDirty()` at mutation sites; `save()` only for immediate writes.
 - **`GlobalFilter.selectedDate`** is runtime-only — never write to `AppState.settings` and never persist.
+- **`AppState.settings.statuses`** — `{name, activityCategory}[]` since v2.4. Always use `.name` when you need the display string. `VALID_ACTIVITY_CATEGORIES` is the authoritative validation list. `migrateStatusCategory()` handles legacy string entries automatically in `fromJSON`.
 - **Holiday changes** — call `App.refresh()` after `Storage.save()` so all end dates recalculate.
 - **Theme changes** — call `render()` for canvas-based views (Dashboard, Gantt) and `KanbanView.render()` in `Settings.setTheme()`.
 

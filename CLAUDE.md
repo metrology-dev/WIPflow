@@ -19,7 +19,7 @@ No build or lint commands exist. To develop:
 
 ## Architecture
 
-The entire application lives in `WIPflow.html` (~5 800 lines), structured as a sequence of named JS object modules. Execution order matters — modules are defined in dependency order and reference each other by name.
+The entire application lives in `WIPflow.html` (~5 900 lines), structured as a sequence of named JS object modules. Execution order matters — modules are defined in dependency order and reference each other by name.
 
 ### Modules (in declaration order)
 
@@ -39,7 +39,7 @@ The entire application lives in `WIPflow.html` (~5 800 lines), structured as a s
 - **`GanttFilters`** — Filter state for the Gantt view.
 - **`KanbanView`** — Kanban board with drag-and-drop. Equal-height columns. Each card has a "Move to…" status `<select>` for keyboard accessibility (`moveCard`). When `GlobalFilter.selectedDate` is active, `_getFilteredTasks()` applies the date filter. Shows empty state when filtered tasks = 0. `onDrop` and `moveCard` both call `Storage.markDirty()`.
 - **`Settings`** — Editable dropdown lists, theme toggle, autosave interval, holiday calendar, calendar settings, group terminology, data management buttons.
-- **`SidebarCalendar`** — Sidebar calendar component. State: `_year`, `_month`, `_collapsed`. `init()` seeds current month; `render()` draws the calendar grid with week numbers and activity dots into `#sidebar-calendar`; `navigate(delta)` steps months; `selectDate(dateStr)` delegates to `GlobalFilter.setDate()`. Dot colours: red = Blocked/Overdue, green = Active/On Hold, outline = Not Started; max 3 dots per day. Week number algorithm supports ISO 8601 and US styles.
+- **`SidebarCalendar`** — Sidebar calendar component. State: `_year`, `_month`, `_collapsed`. `init()` seeds current month; `render()` draws the calendar grid with week numbers and activity dots into `#sidebar-calendar`; `navigate(delta)` steps months; `selectDate(dateStr)` delegates to `GlobalFilter.setDate()`. Dot colours derive from each task status's `activityCategory`: red = `problem`, green = `active`, outline = `planned`; `none` = no dot; max 3 per day. Week number algorithm supports ISO 8601 and US styles.
 - **`Toast`** — Non-blocking notification toasts.
 - **`Report`** — Print/export report dialog. Renders selected sections (KPI cards, charts, Gantt, task table, etc.) into a dedicated print container.
 
@@ -86,7 +86,7 @@ Version format: `MAJOR.MINOR.SAVE`
 - **MINOR** — Developer edits `APP_BASE_VERSION`. Use for bug fixes and small improvements.
 - **SAVE** — Incremented automatically each time the user clicks "Save as HTML".
 
-`APP_BASE_VERSION` is a constant near the top of the JS section (e.g. `const APP_BASE_VERSION = '2.3';`).
+`APP_BASE_VERSION` is a constant near the top of the JS section (e.g. `const APP_BASE_VERSION = '2.4';`).
 `saveVersion` lives in `AppState.settings` and persists in localStorage and embedded data.
 
 **Rule of thumb:** bump MINOR when shipping a fix or small feature; bump MAJOR for breaking changes.
@@ -105,7 +105,7 @@ Version format: `MAJOR.MINOR.SAVE`
     "labs": [],
     "persons": [],
     "priorities": [],
-    "statuses": [],
+    "statuses": [{"name":"Active","activityCategory":"active"}],
     "tags": [],
     "holidays": []
   },
@@ -135,6 +135,7 @@ Version format: `MAJOR.MINOR.SAVE`
 - **Holiday changes** — call `App.refresh()` after `Storage.save()` whenever holidays are added/removed so all task end dates recalculate.
 - **Theme changes** — call the relevant `render()` for the active canvas-based view (Dashboard, Gantt) and `KanbanView.render()` for Kanban in `Settings.setTheme()`.
 - **GlobalFilter** — `GlobalFilter.selectedDate` is a runtime-only string (YYYY-MM-DD or null); it is never written to `AppState.settings` and never persisted. All views read it directly at render time. To trigger a filtered refresh, call `GlobalFilter.setDate(date)` or `GlobalFilter.clearDate()` — never call `App.refresh()` directly when changing the date filter.
+- **`AppState.settings.statuses`** — now `{name, activityCategory}[]`, not a string array. `activityCategory` is one of `planned | active | problem | none`. Always use `.name` when you need the display string. `AppState.fromJSON` auto-migrates legacy string arrays on load. `VALID_ACTIVITY_CATEGORIES` is the authoritative list for validation. New statuses default to `activityCategory: 'none'`.
 
 ## Maintenance rules
 

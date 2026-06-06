@@ -35,7 +35,13 @@ All four representations use the same JSON envelope.
   "labs": ["Lab A", "Lab B"],
   "persons": ["Alice", "Bob"],
   "priorities": ["High", "Medium", "Low"],
-  "statuses": ["Not Started", "Active", "On Hold", "Completed", "Blocked"],
+  "statuses": [
+    {"name": "Not Started", "activityCategory": "planned"},
+    {"name": "Active",      "activityCategory": "active"},
+    {"name": "On Hold",     "activityCategory": "active"},
+    {"name": "Blocked",     "activityCategory": "problem"},
+    {"name": "Completed",   "activityCategory": "none"}
+  ],
   "tags": ["urgent", "review"],
   "holidays": ["2026-12-25 Christmas", "2027-01-01"],
   "groupSingular": "Group",
@@ -56,7 +62,7 @@ All four representations use the same JSON envelope.
 | `labs` | string[] | Available group names |
 | `persons` | string[] | Available person names |
 | `priorities` | string[] | Available priority labels |
-| `statuses` | string[] | Available status labels |
+| `statuses` | `{name: string, activityCategory: string}[]` | Available status objects. `activityCategory` is one of `planned`, `active`, `problem`, `none` — controls calendar dot rendering. Legacy string arrays are auto-migrated on load |
 | `tags` | string[] | Available tag labels |
 | `holidays` | string[] | Dates excluded from workday counts; format `"YYYY-MM-DD"` or `"YYYY-MM-DD Name"` |
 | `groupSingular` | string | Singular label for the grouping concept (e.g. `"Department"`) |
@@ -130,3 +136,4 @@ New keys added to `DEFAULT_SETTINGS` appear automatically for existing users on 
 
 - Internal field names (`task.lab`, `settings.labs`, CSS class `f-lab`, canvas key `chart-lab`) are intentionally kept as `"lab"` even though the user-facing label is configurable. Changing them would break existing `.labwip` files.
 - `AppState.fromJSON` deep-merges loaded settings over `DEFAULT_SETTINGS`, so new keys in `DEFAULT_SETTINGS` appear automatically without requiring a migration.
+- `settings.statuses` was a plain string array before v2.4. `AppState.fromJSON` auto-migrates legacy string entries to `{name, activityCategory}` objects using name-based heuristics (case-insensitive). Unknown names default to `activityCategory: "none"`. No data is lost.

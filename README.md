@@ -66,15 +66,15 @@ A compact month calendar sits in the sidebar below the Views navigation, giving 
 
 ### Activity dots
 
-Up to three dots appear beneath each day number:
+Up to three dots appear beneath each day number, based on the **Activity Category** assigned to each status in **Settings → Task Statuses**:
 
-| Dot | Meaning |
-|-----|---------|
-| ● Green | Active or On Hold tasks span this day |
-| ○ Outline | Not Started tasks are planned for this day |
-| ● Red | Blocked tasks span this day |
+| Dot | Category | Meaning |
+|-----|----------|---------|
+| ● Green | Active Work | Tasks with an active status span this day |
+| ○ Outline | Planned Work | Tasks with a planned status are scheduled for this day |
+| ● Red | Attention Needed | Tasks with a problem status span this day |
 
-Hover over a day for exact counts. Completed tasks show no dots.
+Statuses set to **No Calendar Marker** (e.g. Completed) produce no dot. Hover over a day for exact counts by category.
 
 ### Date filtering
 
@@ -147,7 +147,7 @@ Starting from the start date, the app counts forward that many calendar workdays
 | Groups | Add/remove group names (configurable label: Department, Team, Project, etc.) |
 | Persons | Add/remove staff members |
 | Priorities | Add/remove priority levels |
-| Statuses | Add/remove task statuses |
+| Statuses | Add/remove task statuses; set Activity Category per status to control calendar dot rendering |
 | Tags | Add/remove tags |
 | Holidays | Add dates (with optional names) excluded from workday calculations; import from CSV |
 | Theme | Dark or light |
@@ -188,7 +188,7 @@ Starting from the start date, the app counts forward that many calendar workdays
 WIP Flow is intentionally a single file with no build toolchain.
 
 ```
-WIPflow.html       # The entire application — ~5 800 lines of HTML/CSS/JS
+WIPflow.html       # The entire application — ~5 900 lines of HTML/CSS/JS
 CLAUDE.md          # Architecture notes and conventions for AI-assisted development
 TODO.md            # Backlog and completed change log
 HANDOFF.md         # Context for continuing development across sessions
@@ -258,6 +258,7 @@ New settings keys added to `DEFAULT_SETTINGS` appear automatically for existing 
 
 ## Changelog
 
+- **v2.4** — Calendar activity categories: each status now carries an *Activity Category* (Planned Work / Active Work / Attention Needed / No Calendar Marker) that controls calendar dot rendering; Settings → Task Statuses adds an Activity Category dropdown per status; legacy files auto-migrate on load
 - **v2.3** — File storage with File System Access API; `tasks.json` with write-safe backup; first-time setup; migration from localStorage; external-change detection; Settings → Storage card
 - **v2.2** — New app logo; Settings page redesigned as vertically stacked full-width cards
 - **v2.1** — Calendar sidebar with global date filtering; activity dots; date filter bar; Settings → Calendar
