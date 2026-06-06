@@ -1,7 +1,7 @@
 # WIP Flow — Agent Handoff
 
 **Branch:** `master`
-**Version:** 2.3
+**Version:** 2.4
 **Date:** 2026-06-06
 **Status:** Shipped and merged.
 
@@ -9,9 +9,71 @@
 
 ## Current state
 
-WIP Flow is a single-file offline-first HTML app (`WIPflow.html`). All code is inline — no build step. Open directly in a browser (Firefox primary, Chrome/Edge for file storage) to run. The file is ~5 800 lines.
+WIP Flow is a single-file offline-first HTML app (`WIPflow.html`). All code is inline — no build step. Open directly in a browser (Firefox primary, Chrome/Edge for file storage) to run. The file is ~5 900 lines.
 
-The app is on version **2.3**. The backlog in `TODO.md` is clean — no open items.
+The app is on version **2.4**. The backlog in `TODO.md` is clean — no open items.
+
+---
+
+## What shipped in v2.4
+
+**Calendar activity categories** — calendar dot rendering decoupled from status names.
+
+### Data model change
+
+`AppState.settings.statuses` changed from a plain string array to an object array:
+
+```js
+{ name: 'Active', activityCategory: 'active' }
+```
+
+`activityCategory` is one of four stable system values: `planned`, `active`, `problem`, `none`.
+
+### New constants / helpers (before `resolveColor`)
+
+- `ACTIVITY_CATEGORIES` — object keyed by category value; each entry has `label` and `dot` fields.
+- `VALID_ACTIVITY_CATEGORIES` — `Object.keys(ACTIVITY_CATEGORIES)` for validation.
+- `migrateStatusCategory(name)` — case-insensitive name→category lookup with `'none'` fallback.
+
+### Migration in `AppState.fromJSON`
+
+After merging settings, statuses are normalised:
+- String entries → `{ name, activityCategory: migrateStatusCategory(name) }`
+- Object entries missing or invalid `activityCategory` → category inferred from name
+
+Runs automatically on every load. No user action required. No data is lost.
+
+### `SidebarCalendar._computeDots`
+
+Builds a `Map(statusName → activityCategory)` from `AppState.settings.statuses` once per render, then counts `active / planned / problem` by looking up each task's status. Zero hard-coded status names remain in calendar logic.
+
+### `SidebarCalendar.render` tooltip
+
+Aggregates by category: `"N Problem tasks / N Active tasks / N Planned tasks"` — status names are not exposed.
+
+### Settings changes
+
+- `Settings.render()` calls `_renderStatusList('list-statuses', s.statuses)` instead of the generic `_renderList`.
+- New `Settings._renderStatusList(containerId, statuses)` — renders each status with an inline Activity Category `<select>` dropdown.
+- New `Settings.setStatusCategory(idx, category)` — validates category, saves to `AppState.settings.statuses[idx].activityCategory`, calls `Storage.save()` and `SidebarCalendar.render()`.
+- `Settings.addItem('statuses')` pushes `{ name: val, activityCategory: 'none' }` instead of a string; duplicate check uses `.some(s => s.name === val)`.
+
+### Callers updated to use `.name`
+
+All code that previously iterated `AppState.settings.statuses` as strings now extracts `.name`:
+
+- `TaskModal.open()` — `AppState.settings.statuses.map(s => s.name)` passed to `_populateSelect`
+- `TableView.render()` — `setOpts('filter-status', ...)` receives `.map(s => s.name)`
+- `TableView.editStatus()` — iterates objects, uses `s.name` for value/text/selected
+- `KanbanView.render()` — iterates objects as `statusObj`, uses `statusObj.name`
+- `KanbanView._cardHtml()` — status options map uses `s.name`
+- `GanttFilters.render()` — `setOpts('gantt-filter-status', ...)` receives `.map(s => s.name)`
+
+### HTML changes
+
+- Settings → Task Statuses card: subtitle and helper text updated to mention Activity Category.
+- Help view: calendar dot descriptions updated to describe activity categories, not hard-coded status names.
+- About view: v2.4 changelog entry added.
 
 ---
 
@@ -89,11 +151,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 ## Architecture quick-reference
 
 ```
-WIPflow.html (~5 800 lines)
+WIPflow.html (~5 900 lines)
 │
 ├── CSS (lines ~10–1350)
-├── HTML (lines ~1350–2470)
-│   ├── #setup-overlay             NEW — first-time setup screen
+├── HTML (lines ~1350–2490)
+│   ├── #setup-overlay             — first-time setup screen
 │   ├── #toast-container
 │   ├── #sidebar
 │   │   ├── #sidebar-logo
@@ -109,15 +171,17 @@ WIPflow.html (~5 800 lines)
 │       ├── #date-filter-bar
 │       └── #view-area (dashboard / table / gantt / kanban / settings / help / about)
 │
-└── JS (lines ~2470–end)
-    ├── DEFAULT_SETTINGS
+└── JS (lines ~2490–end)
+    ├── DEFAULT_SETTINGS           statuses now [{name, activityCategory}] objects
+    ├── ACTIVITY_CATEGORIES        NEW — stable system-defined dot categories
+    ├── migrateStatusCategory()    NEW — name→category legacy migration helper
     ├── WorkCalendar
-    ├── AppState
+    ├── AppState                   fromJSON migrates legacy string statuses
     ├── grp()
     ├── GlobalFilter
-    ├── IDB                        NEW — IndexedDB helper
-    ├── FileSystemStorageProvider  NEW — File System Access API
-    ├── StorageManager             NEW — async startup orchestrator
+    ├── IDB
+    ├── FileSystemStorageProvider
+    ├── StorageManager
     ├── Storage
     ├── App
     ├── TaskModal
@@ -126,8 +190,8 @@ WIPflow.html (~5 800 lines)
     ├── KanbanView
     ├── GanttFilters
     ├── Gantt
-    ├── Settings                   +_renderStorageStatus, +connectFolder, +disconnectFolder
-    ├── SidebarCalendar
+    ├── Settings                   +_renderStatusList, +setStatusCategory, updated addItem
+    ├── SidebarCalendar            _computeDots uses activityCategory Map
     ├── Toast
     └── Report
 ```
@@ -139,6 +203,8 @@ WIPflow.html (~5 800 lines)
 - `escHtml()` — use for **all** user content in template strings, including `value="..."` attributes.
 - `Storage.markDirty()` — at mutation sites (debounced 500 ms). `Storage.save()` for immediate writes.
 - `GlobalFilter.selectedDate` is runtime-only — never written to `AppState.settings`.
+- `AppState.settings.statuses` is now `{name, activityCategory}[]`. Always use `.name` when you need the string; never compare by index.
+- `VALID_ACTIVITY_CATEGORIES` — validate before storing any activityCategory value.
 - FS API (`showDirectoryPicker`) requires Chrome/Edge. Firefox gets localStorage fallback automatically.
 - `StorageManager.init()` is async and must resolve before `App.init()` runs.
 - After any fix: bump `APP_BASE_VERSION` MINOR, update Help/About in-app views, update `TODO.md`, commit.
@@ -156,3 +222,4 @@ No open TODO items. Possible future directions:
 - Conflict resolution when external changes are detected (merge instead of replace)
 - Calendar click: "Open Task List" mode, task creation from calendar, date range selection
 - Week / agenda view in the sidebar calendar
+- Status color: add a `color` field to status objects (currently `getStatusColor` uses a hard-coded name→CSS-var map); user-configurable colors per status

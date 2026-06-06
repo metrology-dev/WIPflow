@@ -1,17 +1,34 @@
 # WIP Flow — Development TODO
 
 Items grouped by priority. Bugs are confirmed against the current source (`WIPflow.html`).
-Last analysis: 2026-06-06 (v2.3 shipped — File Storage refactor). Master is clean.
+Last analysis: 2026-06-06 (v2.4 shipped — Calendar activity categories). Master is clean.
 
 ---
 
 ## ToDo
 
-*(No open items — backlog is clean after v2.3.)*
+No open items.
 
 ---
 
 ## ✅ Completed (recent — full history below)
+
+### v2.4 (2026-06-06)
+
+**Calendar activity categories — decouple calendar dots from status names**
+
+- `DEFAULT_SETTINGS.statuses` changed from a string array to an object array: `{ name, activityCategory }` — `activityCategory` is one of `planned`, `active`, `problem`, or `none`
+- New `ACTIVITY_CATEGORIES` constant and `migrateStatusCategory()` helper for name-based legacy migration
+- `AppState.fromJSON` auto-migrates legacy string statuses on load (case-insensitive name match; unknown names default to `none`); no user action required, no data lost
+- `SidebarCalendar._computeDots` now builds a `Map` from status name → activityCategory at render time; zero hard-coded status names remain in calendar logic
+- Calendar tooltips aggregate by category: "N Problem tasks / N Active tasks / N Planned tasks"
+- `Settings._renderStatusList`: status list now renders an Activity Category dropdown per row (Planned Work / Active Work / Attention Needed / No Calendar Marker)
+- `Settings.setStatusCategory(idx, category)`: saves category change, re-saves to storage, re-renders calendar
+- `Settings.addItem('statuses')` now pushes `{ name, activityCategory: 'none' }` instead of a string
+- All callers updated to extract `.name` from status objects: `TaskModal`, `TableView`, `KanbanView`, `GanttFilters`
+- Help view updated to describe activity categories rather than hard-coded status names
+
+---
 
 ### v2.3 (2026-06-06)
 

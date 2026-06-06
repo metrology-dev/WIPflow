@@ -1818,8 +1818,9 @@ tr.overdue td.td-name { color: var(--red); }
           <!-- Statuses -->
           <div class="card">
             <div class="card-header">
-              <span class="card-title">Task Statuses</span><span class="text-sm text-muted">Configure workflow states</span>
+              <span class="card-title">Task Statuses</span><span class="text-sm text-muted">Configure workflow states and calendar activity categories</span>
             </div>
+            <div style="font-size:11px;color:var(--text-3);padding:6px 12px 2px">Choose how each status contributes to the compact calendar activity indicators.</div>
             <div class="settings-list" id="list-statuses"></div>
             <div class="settings-add-row">
               <input class="form-control" id="add-statuses-input" placeholder="Status name…" onkeydown="if(event.key==='Enter') Settings.addItem('statuses')">
@@ -2026,13 +2027,13 @@ tr.overdue td.td-name { color: var(--red); }
             <div class="card-header"><span class="card-title">Calendar Sidebar</span></div>
             <div class="doc-body">
               <p>The compact calendar below the navigation menu gives a visual overview of task activity and doubles as a global date filter.</p>
-              <p><strong>Task activity dots</strong> appear beneath each day number:</p>
+              <p><strong>Task activity dots</strong> appear beneath each day number, based on the <em>Activity Category</em> assigned to each status in <strong>Settings → Task Statuses</strong>:</p>
               <dl class="doc-kv">
-                <dt>● Green (filled)</dt><dd>One or more Active or On Hold tasks span this day.</dd>
-                <dt>○ Outline</dt><dd>One or more Not Started tasks are planned for this day.</dd>
-                <dt>● Red (filled)</dt><dd>One or more Blocked or Overdue tasks overlap this day.</dd>
+                <dt>● Green (filled)</dt><dd><strong>Active Work</strong> — tasks with an active status span this day.</dd>
+                <dt>○ Outline</dt><dd><strong>Planned Work</strong> — tasks with a planned status are scheduled for this day.</dd>
+                <dt>● Red (filled)</dt><dd><strong>Attention Needed</strong> — tasks with a problem status overlap this day.</dd>
               </dl>
-              <p>Up to three dots are shown per day (overdue, then active, then planned). Hover over a day for exact task counts.</p>
+              <p>Up to three dots are shown per day (problem first, then active, then planned). Statuses set to <strong>No Calendar Marker</strong> (e.g. Completed) produce no dot. Hover over a day for exact task counts by category.</p>
               <p><strong>Filtering:</strong> Click any date to activate a global date filter. A banner appears below the toolbar showing the selected date; all views — Dashboard, Table, Gantt, and Kanban — update immediately to show only tasks active on that date. Click the same date again, or click <strong>✕ Clear</strong> in the banner, to remove the filter.</p>
               <p><strong>Navigation:</strong> Use ‹ and › to step through months, or click <strong>Today</strong> to jump back to the current month. The calendar section can be collapsed by clicking the "Calendar" header to reclaim vertical space.</p>
               <p><strong>Settings → Calendar</strong> controls week numbering (ISO 8601 or US style), first day of week (Monday or Sunday), and whether days from adjacent months are visible.</p>
@@ -2216,6 +2217,14 @@ tr.overdue td.td-name { color: var(--red); }
           <div class="card full">
             <div class="card-header"><span class="card-title">Changelog</span></div>
             <div class="doc-body">
+              <p><strong>v2.4</strong> — Calendar activity categories decoupled from status names</p>
+              <ul>
+                <li>Status objects now carry an <strong>Activity Category</strong> (<em>Planned Work</em>, <em>Active Work</em>, <em>Attention Needed</em>, <em>No Calendar Marker</em>) that controls calendar dot rendering — calendar logic no longer depends on status names</li>
+                <li>Settings → Task Statuses: each status now shows a dropdown to change its activity category; new statuses default to "No Calendar Marker"</li>
+                <li>Automatic migration: existing files with plain string statuses are upgraded on load using name-based heuristics; no data is lost</li>
+                <li>Calendar tooltips now aggregate by category (e.g. "3 Problem tasks, 5 Active tasks") rather than by status name</li>
+                <li>Help text updated to describe activity categories instead of hard-coded status names</li>
+              </ul>
               <p><strong>v2.3</strong> — File Storage with File System Access API</p>
               <ul>
                 <li>New storage layer: tasks now save to a <code>tasks.json</code> file in a user-chosen folder (Chrome/Edge) in addition to localStorage; localStorage is always kept as a safety backup</li>
@@ -2480,7 +2489,7 @@ tr.overdue td.td-name { color: var(--red); }
 // ================================================================
 // CONSTANTS & DEFAULT CONFIG
 // ================================================================
-const APP_BASE_VERSION = '2.3';  // MAJOR.MINOR — increment manually
+const APP_BASE_VERSION = '2.4';  // MAJOR.MINOR — increment manually
 const APP_VERSION = APP_BASE_VERSION;
 const STORAGE_KEY = 'labwip_data';
 
@@ -2494,7 +2503,13 @@ const DEFAULT_SETTINGS = {
   labs:       ['RMP', 'RAL', 'RnL'],
   persons:    ['Anna S.', 'Erik L.', 'Maria H.', 'Johan K.', 'Petra N.'],
   priorities: ['Critical', 'High', 'Medium', 'Low'],
-  statuses:   ['Not Started', 'Active', 'On Hold', 'Blocked', 'Completed'],
+  statuses:   [
+    { name: 'Not Started', activityCategory: 'planned'  },
+    { name: 'Active',      activityCategory: 'active'   },
+    { name: 'On Hold',     activityCategory: 'active'   },
+    { name: 'Blocked',     activityCategory: 'problem'  },
+    { name: 'Completed',   activityCategory: 'none'     },
+  ],
   tags:       ['calibration', 'measurement', 'accreditation', 'maintenance', 'ISO-17025', 'urgent'],
   holidays:   [],   // YYYY-MM-DD strings excluded from workday calculations
   calendarWeekNumbering:  'iso',  // 'iso' | 'us'
@@ -2525,6 +2540,28 @@ function getPriorityColor(p) {
 function getStatusColor(s) {
   return STATUS_COLORS[(s||'').toLowerCase()] || 'var(--text-3)';
 }
+/** Activity categories for calendar dot rendering — stable system values */
+const ACTIVITY_CATEGORIES = {
+  planned: { label: 'Planned Work',       dot: 'planned' },
+  active:  { label: 'Active Work',        dot: 'active'  },
+  problem: { label: 'Attention Needed',   dot: 'problem' },
+  none:    { label: 'No Calendar Marker', dot: null      },
+};
+const VALID_ACTIVITY_CATEGORIES = Object.keys(ACTIVITY_CATEGORIES);
+
+/** Infer activityCategory from a legacy status name (case-insensitive) */
+function migrateStatusCategory(name) {
+  const map = {
+    'not started': 'planned',
+    'active':      'active',
+    'on hold':     'active',
+    'blocked':     'problem',
+    'overdue':     'problem',
+    'completed':   'none',
+  };
+  return map[(name || '').toLowerCase()] || 'none';
+}
+
 /** Resolve a CSS variable color string to a concrete hex/rgb value for canvas use */
 function resolveColor(color) {
   if (typeof color === 'string' && color.startsWith('var(')) {
@@ -2690,6 +2727,14 @@ const AppState = {
     if (!obj || !obj.version) throw new Error('Invalid file format');
     this.settings = Object.assign({}, DEFAULT_SETTINGS, obj.settings || {});
     this.tasks    = obj.tasks || [];
+    // Migrate legacy string statuses to {name, activityCategory} objects
+    this.settings.statuses = (this.settings.statuses || []).map(s => {
+      if (typeof s === 'string') return { name: s, activityCategory: migrateStatusCategory(s) };
+      if (!VALID_ACTIVITY_CATEGORIES.includes(s.activityCategory)) {
+        return { ...s, activityCategory: migrateStatusCategory(s.name) };
+      }
+      return s;
+    });
   }
 };
 
@@ -3532,7 +3577,7 @@ const TaskModal = {
     this._populateSelect('f-lab',      AppState.settings.labs,       task?.lab);
     this._populateSelect('f-person',   AppState.settings.persons,    task?.person);
     this._populateSelect('f-priority', AppState.settings.priorities, task?.priority);
-    this._populateSelect('f-status',   AppState.settings.statuses,   task?.status || 'Not Started');
+    this._populateSelect('f-status',   AppState.settings.statuses.map(s => s.name),   task?.status || 'Not Started');
 
     // Title
     document.getElementById('modal-title').textContent = task ? 'Edit Task' : 'New Task';
@@ -4056,7 +4101,7 @@ const TableView = {
     };
     setOpts('filter-lab',    'All ' + grp(1),  AppState.settings.labs);
     setOpts('filter-person',    'All Staff',  AppState.settings.persons);
-    setOpts('filter-status',    'All Statuses',  AppState.settings.statuses);
+    setOpts('filter-status',    'All Statuses',  AppState.settings.statuses.map(s => s.name));
     setOpts('filter-priority',    'All Priorities',  AppState.settings.priorities);
   },
 
@@ -4164,8 +4209,8 @@ const TableView = {
     sel.setAttribute('aria-label', 'Change status');
     AppState.settings.statuses.forEach(s => {
       const o = document.createElement('option');
-      o.value = s; o.textContent = s;
-      if (s === task.status) o.selected = true;
+      o.value = s.name; o.textContent = s.name;
+      if (s.name === task.status) o.selected = true;
       sel.appendChild(o);
     });
     td.innerHTML = '';
@@ -4236,27 +4281,28 @@ const KanbanView = {
       board.innerHTML = '<div style="width:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--text-3);font-size:14px;padding:40px 0"><div style="font-size:28px">📋</div><div>No tasks to display</div><button class="btn btn-primary btn-sm" onclick="TaskModal.open()">+ New Task</button></div>';
       return;
     }
-    board.innerHTML = AppState.settings.statuses.map(status => {
+    board.innerHTML = AppState.settings.statuses.map(statusObj => {
+      const statusName = statusObj.name;
       const colTasks = tasks
-        .filter(t => (t.status||'') === status)
+        .filter(t => (t.status||'') === statusName)
         .sort((a, b) => {
           const pa = PRIO[(a.priority||'').trim()] ?? 9;
           const pb = PRIO[(b.priority||'').trim()] ?? 9;
           return pa !== pb ? pa - pb : (a.name||'').localeCompare(b.name||'');
         });
       return `
-        <div class="kanban-col" data-status="${escHtml(status)}"
-          role="region" aria-label="${escHtml(status)} (${colTasks.length} task${colTasks.length!==1?'s':''})"
+        <div class="kanban-col" data-status="${escHtml(statusName)}"
+          role="region" aria-label="${escHtml(statusName)} (${colTasks.length} task${colTasks.length!==1?'s':''})"
           ondragover="event.preventDefault()"
           ondragenter="this.classList.add('drag-over')"
           ondragleave="if(!event.relatedTarget||!this.contains(event.relatedTarget))this.classList.remove('drag-over')"
-          ondrop="KanbanView.onDrop(event,'${escHtml(status)}',this)">
+          ondrop="KanbanView.onDrop(event,'${escHtml(statusName)}',this)">
           <div class="kanban-col-header">
-            <span class="dot" style="background:${getStatusColor(status)}" aria-hidden="true"></span>
-            <span class="kanban-col-title">${escHtml(status)}</span>
+            <span class="dot" style="background:${getStatusColor(statusName)}" aria-hidden="true"></span>
+            <span class="kanban-col-title">${escHtml(statusName)}</span>
             <span class="kanban-col-count" aria-hidden="true">${colTasks.length}</span>
           </div>
-          <div class="kanban-col-body" role="list" aria-label="${escHtml(status)} tasks">
+          <div class="kanban-col-body" role="list" aria-label="${escHtml(statusName)} tasks">
             ${colTasks.map(t => this._cardHtml(t, today)).join('')}
           </div>
         </div>`;
@@ -4271,7 +4317,7 @@ const KanbanView = {
       .map(tag => `<span class="tag-chip" style="font-size:10px;padding:1px 5px">${escHtml(tag.trim())}</span>`)
       .join('');
     const statusOpts = AppState.settings.statuses.map(s =>
-      `<option value="${escHtml(s)}"${s===t.status?' selected':''}>${escHtml(s)}</option>`
+      `<option value="${escHtml(s.name)}"${s.name===t.status?' selected':''}>${escHtml(s.name)}</option>`
     ).join('');
     return `
       <div class="kanban-card${overdue ? ' kanban-card-overdue' : ''}"
@@ -4380,7 +4426,7 @@ const GanttFilters = {
     };
     setOpts('gantt-filter-lab',    'All ' + grp(1),  AppState.settings.labs);
     setOpts('gantt-filter-person',    'All Staff',  AppState.settings.persons);
-    setOpts('gantt-filter-status',    'All Statuses',  AppState.settings.statuses);
+    setOpts('gantt-filter-status',    'All Statuses',  AppState.settings.statuses.map(s => s.name));
   }
 };
 
@@ -4970,7 +5016,7 @@ const Settings = {
     this._renderList('list-labs',       s.labs,       'labs');
     this._renderList('list-persons',    s.persons,    'persons');
     this._renderList('list-priorities', s.priorities, 'priorities');
-    this._renderList('list-statuses',   s.statuses,   'statuses');
+    this._renderStatusList('list-statuses', s.statuses);
     this._renderList('list-tags',       s.tags,       'tags');
     this._renderHolidays('list-holidays', s.holidays || []);
     this._renderStorageStatus();
@@ -5108,6 +5154,41 @@ const Settings = {
     reader.readAsText(file);
   },
 
+  _renderStatusList(containerId, statuses) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const catOptions = [
+      { val: 'planned', label: 'Planned Work'       },
+      { val: 'active',  label: 'Active Work'        },
+      { val: 'problem', label: 'Attention Needed'   },
+      { val: 'none',    label: 'No Calendar Marker' },
+    ];
+    el.innerHTML = (statuses || []).map((s, i) => {
+      const opts = catOptions.map(o =>
+        `<option value="${o.val}"${s.activityCategory === o.val ? ' selected' : ''}>${escHtml(o.label)}</option>`
+      ).join('');
+      return `
+        <div class="settings-list-item">
+          <span class="item-name" style="flex:1;min-width:0">${escHtml(s.name)}</span>
+          <select class="form-control" style="font-size:12px;padding:2px 6px;height:auto;width:auto;flex-shrink:0;margin-right:4px"
+                  title="Calendar activity category"
+                  onchange="Settings.setStatusCategory(${i}, this.value)">
+            ${opts}
+          </select>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="Settings.removeItem('statuses',${i})" title="Remove" style="color:var(--text-3);font-size:11px">✕</button>
+        </div>`;
+    }).join('');
+  },
+
+  setStatusCategory(idx, category) {
+    if (!VALID_ACTIVITY_CATEGORIES.includes(category)) return;
+    const statuses = AppState.settings.statuses;
+    if (!statuses || !statuses[idx]) return;
+    statuses[idx].activityCategory = category;
+    Storage.save();
+    SidebarCalendar.render();
+  },
+
   _renderList(containerId, items, key) {
     const el = document.getElementById(containerId);
     if (!el) return;
@@ -5125,11 +5206,19 @@ const Settings = {
     const val = input.value.trim();
     if (!val) return;
     if (!AppState.settings[key]) AppState.settings[key] = [];
-    if (AppState.settings[key].includes(val)) {
-      Toast.show(`"${val}" already exists`, 'error');
-      return;
+    if (key === 'statuses') {
+      if (AppState.settings[key].some(s => s.name === val)) {
+        Toast.show(`"${val}" already exists`, 'error');
+        return;
+      }
+      AppState.settings[key].push({ name: val, activityCategory: 'none' });
+    } else {
+      if (AppState.settings[key].includes(val)) {
+        Toast.show(`"${val}" already exists`, 'error');
+        return;
+      }
+      AppState.settings[key].push(val);
     }
-    AppState.settings[key].push(val);
     input.value = '';
     this.render();
     Storage.save();
@@ -5308,9 +5397,9 @@ const SidebarCalendar = {
 
         const dots  = this._computeDots(dateStr);
         const tipParts = [];
-        if (dots.active  > 0) tipParts.push(`Active: ${dots.active}`);
-        if (dots.planned > 0) tipParts.push(`Planned: ${dots.planned}`);
-        if (dots.overdue > 0) tipParts.push(`Overdue: ${dots.overdue}`);
+        if (dots.overdue > 0) tipParts.push(`${dots.overdue} Problem task${dots.overdue !== 1 ? 's' : ''}`);
+        if (dots.active  > 0) tipParts.push(`${dots.active} Active task${dots.active !== 1 ? 's' : ''}`);
+        if (dots.planned > 0) tipParts.push(`${dots.planned} Planned task${dots.planned !== 1 ? 's' : ''}`);
         const tooltip = [dateStr, ...tipParts].join('\n');
 
         return `<div class="${cls}" onclick="SidebarCalendar.selectDate('${dateStr}')" title="${tooltip}">
@@ -5371,17 +5460,17 @@ const SidebarCalendar = {
   },
 
   _computeDots(dateStr) {
-    let active = 0, planned = 0, overdue = 0;
+    let active = 0, planned = 0, problem = 0;
+    const statusMap = new Map(AppState.settings.statuses.map(s => [s.name, s.activityCategory]));
     for (const t of AppState.tasks) {
       if (!t.startDate || !t.endDate) continue;
       if (t.startDate > dateStr || t.endDate < dateStr) continue;
-      const st = (t.status || '').toLowerCase();
-      if (st === 'completed') continue;
-      if (st === 'active' || st === 'on hold') active++;
-      else if (st === 'not started') planned++;
-      else if (st === 'blocked' || st === 'overdue') overdue++;
+      const cat = statusMap.get(t.status) || 'none';
+      if (cat === 'active')   active++;
+      else if (cat === 'planned')  planned++;
+      else if (cat === 'problem')  problem++;
     }
-    return { active, planned, overdue };
+    return { active, planned, overdue: problem };
   },
 
   _dotHtml(dots) {
