@@ -1307,6 +1307,32 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 }
 #autosave-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); transition: background 0.3s; }
 #autosave-dot.saved { background: var(--green); }
+#autosave-dot.error { background: var(--red); }
+
+/* First-time setup overlay */
+#setup-overlay {
+  position: fixed; inset: 0; z-index: 9998;
+  background: var(--bg-1);
+  align-items: center; justify-content: center;
+  padding: 24px;
+}
+.setup-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 40px 48px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+}
+.setup-card h2 { font-size: 22px; font-weight: 600; margin: 16px 0 8px; }
+.setup-card .setup-subtitle { font-size: 13px; color: var(--text-2); line-height: 1.7; margin: 0 0 20px; }
+.setup-card .setup-benefits {
+  text-align: left; font-size: 13px; color: var(--text-2);
+  line-height: 1.9; margin: 0 0 28px; list-style: none; padding: 0;
+}
+.setup-card .setup-benefits li::before { content: '✓  '; color: var(--green); font-weight: 600; }
+.setup-card .setup-actions { display: flex; flex-direction: column; gap: 10px; }
 
 /* Overdue highlight */
 tr.overdue td { color: var(--text); }
@@ -1910,11 +1936,17 @@ tr.overdue td.td-name { color: var(--red); }
             </div>
 
             <div class="card">
+              <div class="card-header"><span class="card-title">Storage</span></div>
+              <div class="card-body" style="display:flex;flex-direction:column;gap:10px" id="storage-status-content">
+                <div style="font-size:12px;color:var(--text-3)">Loading…</div>
+              </div>
+            </div>
+
+            <div class="card">
               <div class="card-header"><span class="card-title">Data Management</span></div>
               <div class="data-actions">
                 <div style="font-size:12px;color:var(--text-3);line-height:1.6;padding:2px 0 6px">
-                  Data is saved automatically in <strong style="color:var(--text-2)">localStorage</strong>.
-                  To make the file portable, use <strong style="color:var(--text-2)">Save as HTML</strong> — it downloads a self-contained copy of WIPflow.html with all data embedded. Replace your working file with that download to carry your data with the file.
+                  Export a portable backup with <strong style="color:var(--text-2)">Save as HTML</strong> (self-contained) or <strong style="color:var(--text-2)">Export .labwip</strong> (JSON). Use <strong style="color:var(--text-2)">Import</strong> to restore from a backup.
                 </div>
                 <button class="btn btn-secondary" onclick="Storage.exportHTML()">↓ Save as self-contained HTML</button>
                 <button class="btn btn-secondary" onclick="Storage.exportFile()">↑ Export backup snapshot (.labwip)</button>
@@ -1940,7 +1972,7 @@ tr.overdue td.td-name { color: var(--red); }
             <div class="card-header"><span class="card-title">Getting Started</span></div>
             <div class="doc-body">
               <p>WIP Flow runs entirely in your browser — no install, no server, no internet required. Open <code>WIPflow.html</code> from any folder and your data loads automatically. The app ships with 15 demonstration tasks; clear them under <strong>Settings → Data Management → Clear All Data</strong> when you're ready to start fresh.</p>
-              <p>Data is saved automatically on every change (400 ms debounce) and periodically in the background. A green dot in the sidebar confirms the last successful save. Use <strong>↓ Save as HTML</strong> to produce a self-contained portable copy — see <em>Saving &amp; Portability</em> below.</p>
+              <p>Data is saved automatically on every change (500 ms debounce) and periodically in the background. A green dot in the sidebar confirms the last successful save; a 📁 prefix means tasks are also written to your file. Use <strong>↓ Save as HTML</strong> to produce a self-contained portable copy — see <em>Saving &amp; Portability</em> below.</p>
             </div>
           </div>
 
@@ -2011,25 +2043,21 @@ tr.overdue td.td-name { color: var(--red); }
           <div class="card full">
             <div class="card-header"><span class="card-title">Saving &amp; Portability</span></div>
             <div class="doc-body">
-              <p>WIP Flow uses three complementary layers so your data is never lost and always travels with the file.</p>
-              <p><strong>Layer 1 — localStorage (automatic)</strong><br>
-              Every change is saved to browser localStorage within 400 ms. The save indicator in the sidebar turns green after each successful write. This is fast and invisible. <em>Limitation:</em> localStorage is scoped to the file's URL. If you move <code>WIPflow.html</code> to a different folder, the browser opens a different origin and finds no data.</p>
-              <p><strong>Layer 2 — Embedded data in the HTML file</strong><br>
-              On every save, the full dataset is written into a <code>&lt;script id="labwip-embedded-data"&gt;</code> tag inside the HTML file in memory. This means the file is self-contained — if you use <strong>↓ Save as HTML</strong>, the downloaded copy carries all your data. Open it on any machine, any browser, without needing localStorage.</p>
-              <p><strong>Layer 3 — .labwip JSON export</strong><br>
-              <strong>↓ Export .labwip</strong> (Settings → Data Management) downloads a plain JSON backup file. Use this to transfer data between files or as an off-site backup. Import with <strong>↓ Import</strong> in the topbar.</p>
-              <p><strong>Recommended workflow for portability:</strong></p>
-              <ol>
-                <li>Work normally — localStorage handles day-to-day saves automatically.</li>
-                <li>Periodically click <strong>↓ Save as HTML</strong> in the sidebar. This downloads a versioned <code>WIPflow_v1.4.N.html</code> file with all data embedded.</li>
-                <li>Replace your working <code>WIPflow.html</code> with the downloaded file.</li>
-                <li>When moving to a new machine, copy that file — it carries everything.</li>
-              </ol>
+              <p>WIP Flow uses multiple complementary layers so your data is never lost.</p>
+              <p><strong>Layer 1 — File Storage (Chrome/Edge, recommended)</strong><br>
+              Connect a folder once in <strong>Settings → Storage</strong>. WIP Flow saves tasks to <code>tasks.json</code> in that folder after every change. A write-safe backup (<code>tasks.backup.json</code>) is created before each write. If <code>tasks.json</code> is corrupted, the backup is restored automatically on startup. The 📁 prefix in the save indicator confirms file storage is active. Tasks in a file survive browser cache clearing and can be copied between computers.</p>
+              <p><strong>Layer 2 — localStorage (always active, safety net)</strong><br>
+              Every save also writes to browser localStorage. This is fast and invisible. When file storage is active, localStorage acts as an additional safety net. <em>Limitation:</em> localStorage is scoped to the file URL; moving <code>WIPflow.html</code> to a new folder will lose the localStorage association.</p>
+              <p><strong>Layer 3 — Embedded data in the HTML file</strong><br>
+              On every save the full dataset is embedded in the HTML file in memory. Use <strong>↓ Save as HTML</strong> to download a self-contained copy that carries all your data — open it on any machine or browser.</p>
+              <p><strong>Layer 4 — .labwip JSON export</strong><br>
+              <strong>↑ Export .labwip</strong> (Settings → Data Management) downloads a plain JSON backup. Import with <strong>↓ Import .labwip</strong> to restore.</p>
               <p><strong>Save triggers:</strong></p>
               <table class="doc-table">
                 <thead><tr><th>Trigger</th><th>When</th><th>Behaviour</th></tr></thead>
                 <tbody>
-                  <tr><td>Save-on-change</td><td>Every task/settings edit</td><td>Debounced 400 ms</td></tr>
+                  <tr><td>Save-on-change</td><td>Every task/settings edit</td><td>Debounced 500 ms</td></tr>
+                  <tr><td>Tab hide / page unload</td><td>Tab switch, close, navigation</td><td>Immediate sync to localStorage + file</td></tr>
                   <tr><td>Manual save</td><td>⬡ Save button or Ctrl+S</td><td>Immediate, shows toast</td></tr>
                   <tr><td>Periodic autosave</td><td>Every N minutes (configurable)</td><td>Silent background write; set to 0 to disable</td></tr>
                 </tbody>
@@ -2181,6 +2209,18 @@ tr.overdue td.td-name { color: var(--red); }
           <div class="card full">
             <div class="card-header"><span class="card-title">Changelog</span></div>
             <div class="doc-body">
+              <p><strong>v2.3</strong> — File Storage with File System Access API</p>
+              <ul>
+                <li>New storage layer: tasks now save to a <code>tasks.json</code> file in a user-chosen folder (Chrome/Edge) in addition to localStorage; localStorage is always kept as a safety backup</li>
+                <li>First-time setup: a friendly welcome screen guides new users to choose a folder (or continue with browser storage); shown once on first launch in compatible browsers</li>
+                <li>Write safety: every save first backs up the existing <code>tasks.json</code> to <code>tasks.backup.json</code>, then writes the new file; if <code>tasks.json</code> is corrupt on startup, the backup is restored automatically</li>
+                <li>Existing user migration: if localStorage data exists when a folder is first connected, it is automatically migrated to <code>tasks.json</code></li>
+                <li>External change detection: when the browser tab regains focus, if <code>tasks.json</code> has been modified outside the app, a reload offer is shown</li>
+                <li>Settings → Storage: shows current provider (connected folder or browser storage), with Connect / Change / Disconnect folder actions</li>
+                <li>Save indicator: shows 📁 prefix when saving to a file; error state (red dot) when a file write fails</li>
+                <li>Immediate save on tab hide / page unload for data safety</li>
+                <li>Save debounce changed from 400 ms to 500 ms</li>
+              </ul>
               <p><strong>v2.2</strong> — New app logo and Settings page redesign</p>
               <ul>
                 <li>App logo: updated to new WIP Flow branding across favicon, sidebar, and About page</li>
@@ -2398,6 +2438,29 @@ tr.overdue td.td-name { color: var(--red); }
   </div>
 </div>
 
+<!-- FIRST-TIME SETUP OVERLAY (shown by StorageManager before App.init when FS API is available) -->
+<div id="setup-overlay" style="display:none">
+  <div class="setup-card">
+    <div style="font-size:40px">📁</div>
+    <h2>Welcome to WIP Flow</h2>
+    <p class="setup-subtitle">Choose where to keep your tasks. You can change this later in Settings.</p>
+    <ul class="setup-benefits">
+      <li>Tasks stored in a file you own</li>
+      <li>Works completely offline</li>
+      <li>Easy to back up, sync, or move</li>
+      <li>Data survives browser cache clearing</li>
+    </ul>
+    <div class="setup-actions">
+      <button class="btn btn-primary" id="setup-choose-folder" style="font-size:14px;padding:10px 20px">
+        📂 Choose Folder
+      </button>
+      <button class="btn btn-ghost" id="setup-use-browser" style="font-size:12px">
+        Use browser storage for now
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST CONTAINER -->
 <div id="toast-container"></div>
 
@@ -2410,7 +2473,7 @@ tr.overdue td.td-name { color: var(--red); }
 // ================================================================
 // CONSTANTS & DEFAULT CONFIG
 // ================================================================
-const APP_BASE_VERSION = '2.2';  // MAJOR.MINOR — increment manually
+const APP_BASE_VERSION = '2.3';  // MAJOR.MINOR — increment manually
 const APP_VERSION = APP_BASE_VERSION;
 const STORAGE_KEY = 'labwip_data';
 
@@ -2668,82 +2731,393 @@ const GlobalFilter = {
 };
 
 // ================================================================
+// IDB — IndexedDB helper (persists FileSystemDirectoryHandle)
+// ================================================================
+const IDB = {
+  _db: null,
+
+  async _open() {
+    if (this._db) return this._db;
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('wipflow', 1);
+      req.onupgradeneeded = e => e.target.result.createObjectStore('kv');
+      req.onsuccess = e => { this._db = e.target.result; resolve(this._db); };
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async get(key) {
+    try {
+      const db = await this._open();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('kv', 'readonly');
+        const req = tx.objectStore('kv').get(key);
+        req.onsuccess = () => resolve(req.result ?? null);
+        req.onerror = () => reject(req.error);
+      });
+    } catch(e) { return null; }
+  },
+
+  async set(key, val) {
+    try {
+      const db = await this._open();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('kv', 'readwrite');
+        const req = tx.objectStore('kv').put(val, key);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    } catch(e) { console.warn('IDB write failed:', e); }
+  },
+
+  async del(key) {
+    try {
+      const db = await this._open();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('kv', 'readwrite');
+        const req = tx.objectStore('kv').delete(key);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    } catch(e) {}
+  },
+};
+
+// ================================================================
+// FILE SYSTEM STORAGE PROVIDER — File System Access API
+// ================================================================
+const FileSystemStorageProvider = {
+  supported: typeof showDirectoryPicker === 'function',
+  _dirHandle: null,
+
+  /** Restore stored handle and request permission. Returns true if ready. */
+  async init() {
+    if (!this.supported) return false;
+    try {
+      const handle = await IDB.get('fsDirHandle');
+      if (!handle) return false;
+      const perm = await handle.requestPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') return false;
+      this._dirHandle = handle;
+      return true;
+    } catch(e) {
+      console.warn('FS provider init failed:', e);
+      return false;
+    }
+  },
+
+  /** Show folder picker and persist the handle. Returns true on success. */
+  async chooseFolder() {
+    if (!this.supported) return false;
+    try {
+      const handle = await showDirectoryPicker({ mode: 'readwrite', id: 'wipflow' });
+      const perm = await handle.requestPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') return false;
+      this._dirHandle = handle;
+      await IDB.set('fsDirHandle', handle);
+      return true;
+    } catch(e) {
+      if (e.name !== 'AbortError') console.warn('Folder picker failed:', e);
+      return false;
+    }
+  },
+
+  /** Remove stored handle. */
+  async disconnect() {
+    this._dirHandle = null;
+    await IDB.del('fsDirHandle');
+  },
+
+  /** Load tasks.json. Returns parsed object or null if not found. Throws on parse error. */
+  async load() {
+    if (!this._dirHandle) return null;
+    try {
+      const fh   = await this._dirHandle.getFileHandle('tasks.json', { create: false });
+      const file = await fh.getFile();
+      const text = await file.text();
+      return JSON.parse(text);
+    } catch(e) {
+      if (e.name === 'NotFoundError') return null;
+      throw e;
+    }
+  },
+
+  /** Load tasks.backup.json. Returns parsed object or null. */
+  async loadBackup() {
+    if (!this._dirHandle) return null;
+    try {
+      const fh   = await this._dirHandle.getFileHandle('tasks.backup.json', { create: false });
+      const file = await fh.getFile();
+      const text = await file.text();
+      return JSON.parse(text);
+    } catch(e) { return null; }
+  },
+
+  /**
+   * Write-safe save: backup existing tasks.json first, then write new content.
+   * Returns true on success.
+   */
+  async save(json) {
+    if (!this._dirHandle) return false;
+    try {
+      const existing = await this._readRaw('tasks.json');
+      if (existing) await this._writeRaw('tasks.backup.json', existing).catch(() => {});
+      await this._writeRaw('tasks.json', json);
+      return true;
+    } catch(e) {
+      console.error('FS save failed:', e);
+      return false;
+    }
+  },
+
+  async _readRaw(filename) {
+    try {
+      const fh   = await this._dirHandle.getFileHandle(filename, { create: false });
+      const file = await fh.getFile();
+      return await file.text();
+    } catch(e) { return null; }
+  },
+
+  async _writeRaw(filename, text) {
+    const fh       = await this._dirHandle.getFileHandle(filename, { create: true });
+    const writable = await fh.createWritable();
+    await writable.write(text);
+    await writable.close();
+  },
+
+  getFolderName() { return this._dirHandle?.name ?? null; },
+};
+
+// ================================================================
+// STORAGE MANAGER — provider selection, startup loading, migration
+// ================================================================
+const StorageManager = {
+  _fsActive: false,
+  _lastSavedTime: 0,
+  _showRecoveryToast: false,
+
+  /** Async startup: load data into AppState before App.init() runs. */
+  async init() {
+    // 1. Try to restore a previously-authorised FS folder
+    if (FileSystemStorageProvider.supported) {
+      const fsReady = await FileSystemStorageProvider.init();
+      if (fsReady) {
+        this._fsActive = true;
+        await this._loadFromFS();
+        this._registerPageEvents();
+        return;
+      }
+    }
+
+    // 2. Show first-time folder-picker for capable browsers (once only)
+    const setupDone = !!localStorage.getItem('wipflow_setup_done');
+    if (FileSystemStorageProvider.supported && !setupDone) {
+      await this._showSetup();
+      if (this._fsActive) {
+        await this._loadFromFS();
+        this._registerPageEvents();
+        return;
+      }
+    }
+
+    // 3. Fallback: load from localStorage / embedded data
+    this._loadFromLocalStorage();
+    this._registerPageEvents();
+  },
+
+  /** Load tasks.json; fall back to backup or localStorage on failure. */
+  async _loadFromFS() {
+    try {
+      const data = await FileSystemStorageProvider.load();
+      if (data) { AppState.fromJSON(data); return; }
+      // File doesn't exist yet — migrate from localStorage if available
+      await this._migrateLocalStorageToFS();
+    } catch(e) {
+      console.warn('tasks.json load error:', e);
+      const backup = await FileSystemStorageProvider.loadBackup();
+      if (backup) {
+        try {
+          AppState.fromJSON(backup);
+          await FileSystemStorageProvider.save(JSON.stringify(AppState.toJSON(), null, 2));
+          this._showRecoveryToast = true;
+          return;
+        } catch(e2) {}
+      }
+      // Both failed — fall back to localStorage silently
+      this._fsActive = false;
+      this._loadFromLocalStorage();
+    }
+  },
+
+  /** Copy localStorage data into tasks.json as initial migration. */
+  async _migrateLocalStorageToFS() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      AppState.fromJSON(data);
+      await FileSystemStorageProvider.save(JSON.stringify(AppState.toJSON(), null, 2));
+      localStorage.setItem('wipflow_migrated', '1');
+      // Keep localStorage data as a safety net — user can clear it in Settings
+    } catch(e) {
+      console.warn('Migration failed:', e);
+      this._loadFromLocalStorage();
+    }
+  },
+
+  /** Load from embedded data or localStorage using the existing score-based logic. */
+  _loadFromLocalStorage() {
+    let embeddedData = null, localData = null;
+    try {
+      const tag = document.getElementById('labwip-embedded-data');
+      if (tag && tag.textContent.trim()) embeddedData = JSON.parse(tag.textContent.trim());
+    } catch(e) {}
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) localData = JSON.parse(raw);
+    } catch(e) {}
+    const score = d => (!d || !d.tasks) ? 0
+      : d.tasks.reduce((m, t) => Math.max(m, new Date(t.modified || 0).getTime()), 0);
+    const winner = score(embeddedData) >= score(localData) ? embeddedData : localData;
+    if (winner) { try { AppState.fromJSON(winner); } catch(e) {} }
+  },
+
+  /** Show first-time setup overlay and resolve when the user makes a choice. */
+  _showSetup() {
+    return new Promise(resolve => {
+      const overlay = document.getElementById('setup-overlay');
+      if (!overlay) { resolve(); return; }
+      overlay.style.display = 'flex';
+
+      document.getElementById('setup-choose-folder').onclick = async () => {
+        const ok = await FileSystemStorageProvider.chooseFolder();
+        if (ok) {
+          this._fsActive = true;
+          localStorage.setItem('wipflow_setup_done', '1');
+          overlay.style.display = 'none';
+          resolve();
+        }
+        // Cancelled — keep overlay open
+      };
+
+      document.getElementById('setup-use-browser').onclick = () => {
+        localStorage.setItem('wipflow_setup_done', '1');
+        this._loadFromLocalStorage();
+        overlay.style.display = 'none';
+        resolve();
+      };
+    });
+  },
+
+  /** Register page-lifecycle hooks for immediate/reload saves. */
+  _registerPageEvents() {
+    // Immediate localStorage sync when page hides (tab close, navigation)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden' && Storage._dirty) {
+        const json = JSON.stringify(AppState.toJSON(), null, 2);
+        try { localStorage.setItem(STORAGE_KEY, json); } catch(e) {}
+        if (this._fsActive) FileSystemStorageProvider.save(json).catch(() => {});
+      }
+    });
+
+    // Check for external file changes when tab regains focus
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && this._fsActive) {
+        this._checkExternalChange().catch(() => {});
+      }
+    });
+
+    // Best-effort sync on page unload
+    window.addEventListener('beforeunload', () => {
+      if (Storage._dirty) {
+        try {
+          const json = JSON.stringify(AppState.toJSON(), null, 2);
+          localStorage.setItem(STORAGE_KEY, json);
+        } catch(e) {}
+      }
+    });
+  },
+
+  /** If tasks.json was modified externally since last save, offer reload. */
+  async _checkExternalChange() {
+    if (!FileSystemStorageProvider._dirHandle || !this._lastSavedTime) return;
+    try {
+      const fh   = await FileSystemStorageProvider._dirHandle.getFileHandle('tasks.json', { create: false });
+      const file = await fh.getFile();
+      if (file.lastModified > this._lastSavedTime + 2000) {
+        if (confirm('The tasks file was changed outside WIP Flow.\nReload from file?')) {
+          const data = JSON.parse(await file.text());
+          AppState.fromJSON(data);
+          this._lastSavedTime = file.lastModified;
+          App.refresh();
+          Toast.show('Tasks reloaded from file', 'info');
+        }
+      }
+    } catch(e) {}
+  },
+
+  /** Write json to active provider(s). Returns true if all writes succeeded. */
+  async _doSave(json) {
+    // localStorage is always the safety net
+    try { localStorage.setItem(STORAGE_KEY, json); } catch(e) {}
+    try {
+      const tag = document.getElementById('labwip-embedded-data');
+      if (tag) tag.textContent = json;
+    } catch(e) {}
+
+    if (this._fsActive && FileSystemStorageProvider._dirHandle) {
+      const ok = await FileSystemStorageProvider.save(json);
+      if (ok) {
+        this._lastSavedTime = Date.now();
+        return true;
+      }
+      // FS write failed — data is safe in localStorage
+      return false;
+    }
+    return true;
+  },
+
+  isFileSystemActive() { return this._fsActive && !!FileSystemStorageProvider._dirHandle; },
+  getFolderName() { return FileSystemStorageProvider.getFolderName(); },
+
+  /** Connect a folder from Settings. */
+  async connectFolder() {
+    const ok = await FileSystemStorageProvider.chooseFolder();
+    if (!ok) return false;
+    this._fsActive = true;
+    localStorage.setItem('wipflow_setup_done', '1');
+    const json = JSON.stringify(AppState.toJSON(), null, 2);
+    await FileSystemStorageProvider.save(json);
+    localStorage.setItem('wipflow_migrated', '1');
+    this._lastSavedTime = Date.now();
+    return true;
+  },
+
+  /** Disconnect and stop writing to the folder. */
+  async disconnectFolder() {
+    await FileSystemStorageProvider.disconnect();
+    this._fsActive = false;
+  },
+};
+
+// ================================================================
 // STORAGE — localStorage + portable self-contained HTML export
 // ================================================================
 const Storage = {
   _dirty: true,
 
   /**
-   * Save to localStorage and update the embedded <script> tag in the
-   * in-memory DOM (so exportHTML() can serialise a self-contained file).
-   * No file download happens here — use exportHTML() for portability.
+   * Save current AppState via StorageManager (FS file + localStorage safety net).
+   * Fire-and-forget async; the save indicator updates when done.
    */
   save() {
     const json = JSON.stringify(AppState.toJSON(), null, 2);
-    // 1. localStorage (fast, same-origin)
-    try {
-      localStorage.setItem(STORAGE_KEY, json);
-    } catch(e) {
-      console.warn('localStorage save failed:', e);
-    }
-    // 2. Keep the embedded <script> tag up to date in the DOM so that
-    //    exportHTML() always captures current data without a second serialise.
-    try {
-      const tag = document.getElementById('labwip-embedded-data');
-      if (tag) tag.textContent = json;
-    } catch(e) {
-      console.warn('Embedded data write failed:', e);
-    }
     this._dirty = false;
-    this._setIndicator(true);
-  },
-
-  /**
-   * Load on startup. Priority order:
-   *   1. Embedded data in this HTML file (most recent if file was saved here)
-   *   2. localStorage (most recent if opened from same path before)
-   *   Whichever has the newer `modified` timestamp wins.
-   */
-  load() {
-    let embeddedData = null;
-    let localData    = null;
-
-    // Try embedded tag
-    try {
-      const tag = document.getElementById('labwip-embedded-data');
-      if (tag && tag.textContent.trim()) {
-        embeddedData = JSON.parse(tag.textContent.trim());
-      }
-    } catch(e) {
-      console.warn('Embedded data parse failed:', e);
-    }
-
-    // Try localStorage
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) localData = JSON.parse(raw);
-    } catch(e) {
-      console.warn('localStorage load failed:', e);
-    }
-
-    // Pick the newer source by comparing task count + newest modified timestamp
-    const score = (d) => {
-      if (!d || !d.tasks) return 0;
-      const latest = d.tasks.reduce((m, t) => Math.max(m, new Date(t.modified||0).getTime()), 0);
-      return latest;
-    };
-
-    const winner = score(embeddedData) >= score(localData) ? embeddedData : localData;
-
-    if (winner) {
-      try {
-        AppState.fromJSON(winner);
-        return true;
-      } catch(e) {
-        console.warn('Data load failed:', e);
-      }
-    }
-    return false;
+    this._setIndicator(false, 'saving');
+    StorageManager._doSave(json).then(ok => {
+      this._setIndicator(ok, ok ? 'saved' : 'error');
+      if (!ok) Toast.show('Could not save to file. Data is safe in browser storage.', 'error');
+    });
   },
 
   /**
@@ -2778,14 +3152,25 @@ const Storage = {
     Toast.show('Saved — replace your WIPflow.html with the downloaded file', 'success');
   },
 
-  _setIndicator(saved) {
+  _setIndicator(ok, status) {
     const dot  = document.getElementById('autosave-dot');
     const text = document.getElementById('autosave-text');
     if (!dot) return;
-    if (saved) {
+    if (status === 'error') {
+      dot.className = 'error';
+      text.textContent = 'Save failed';
+      return;
+    }
+    if (status === 'saving') {
+      dot.className = '';
+      text.textContent = 'Saving…';
+      return;
+    }
+    if (ok) {
       dot.className = 'saved';
-      const mins = AppState.settings.autosaveIntervalMinutes ?? 5;
-      text.textContent = 'Saved ' + new Date().toLocaleTimeString('sv-SE', {hour:'2-digit',minute:'2-digit'})
+      const mins   = AppState.settings.autosaveIntervalMinutes ?? 5;
+      const prefix = StorageManager.isFileSystemActive() ? '📁 ' : '';
+      text.textContent = prefix + 'Saved ' + new Date().toLocaleTimeString('sv-SE', {hour:'2-digit',minute:'2-digit'})
         + (mins === 0 ? ' · timer off' : ' · ' + mins + 'min');
     } else {
       dot.className = '';
@@ -2795,10 +3180,10 @@ const Storage = {
 
   markDirty() {
     this._dirty = true;
-    this._setIndicator(false);
-    // Save-on-change: debounced 400ms so rapid edits (e.g. slider drag) coalesce
+    this._setIndicator(false, 'unsaved');
+    // Debounced save-on-change: 500 ms so rapid edits (e.g. slider drag) coalesce
     clearTimeout(this._changeTimer);
-    this._changeTimer = setTimeout(() => this.save(), 400);
+    this._changeTimer = setTimeout(() => this.save(), 500);
   },
 
   /** Called by the manual Save button in the topbar */
@@ -2984,9 +3369,9 @@ const App = {
   currentView: 'dashboard',
 
   init() {
-    // Load saved data or seed defaults
-    const loaded = Storage.load();
-    if (!loaded) {
+    // Data was loaded by StorageManager.init() before this runs.
+    // Seed demo data only if no tasks were loaded.
+    if (AppState.tasks.length === 0) {
       this._seedDemoData();
     }
     // Apply theme
@@ -3008,6 +3393,12 @@ const App = {
     // Update topbar subtitle with current date
     const sub = document.getElementById('topbar-subtitle');
     if (sub) sub.textContent = new Date().toLocaleDateString('sv-SE', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+    // Show deferred messages from async startup
+    if (StorageManager._showRecoveryToast) {
+      StorageManager._showRecoveryToast = false;
+      setTimeout(() => Toast.show('Data recovered from backup file (tasks.backup.json)', 'info', 5000), 600);
+    }
   },
 
   switchView(view) {
@@ -4575,6 +4966,7 @@ const Settings = {
     this._renderList('list-statuses',   s.statuses,   'statuses');
     this._renderList('list-tags',       s.tags,       'tags');
     this._renderHolidays('list-holidays', s.holidays || []);
+    this._renderStorageStatus();
 
     // Autosave interval
     const mins = s.autosaveIntervalMinutes ?? 5;
@@ -4753,6 +5145,63 @@ const Settings = {
     if (App.currentView === 'dashboard') Dashboard.render();
     if (App.currentView === 'gantt')     Gantt.render();
     if (App.currentView === 'kanban')    KanbanView.render();
+  },
+
+  _renderStorageStatus() {
+    const el = document.getElementById('storage-status-content');
+    if (!el) return;
+    const fsActive    = StorageManager.isFileSystemActive();
+    const fsSupported = FileSystemStorageProvider.supported;
+    const migrated    = !!localStorage.getItem('wipflow_migrated');
+
+    if (!fsSupported) {
+      el.innerHTML = `
+        <div style="font-size:12px;color:var(--text-3);line-height:1.7">
+          File storage is not available in this browser. Tasks are saved in <strong style="color:var(--text-2)">browser localStorage</strong>.<br>
+          For file-based storage open WIP Flow in <strong>Chrome</strong> or <strong>Edge</strong>.
+        </div>`;
+      return;
+    }
+
+    if (fsActive) {
+      const folder = escHtml(StorageManager.getFolderName() || 'folder');
+      el.innerHTML = `
+        <div style="font-size:12px;color:var(--green);margin-bottom:8px">
+          Connected: <strong>${folder}</strong> — tasks save to <code>tasks.json</code> automatically.
+        </div>
+        ${migrated ? `<div style="font-size:11px;color:var(--text-3);margin-bottom:8px">
+          Migrated from browser storage. Browser localStorage is kept as a safety backup.
+        </div>` : ''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" onclick="Settings.connectFolder()">Change Folder</button>
+          <button class="btn btn-ghost btn-sm" onclick="Settings.disconnectFolder()">Disconnect</button>
+        </div>`;
+    } else {
+      el.innerHTML = `
+        <div style="font-size:12px;color:var(--text-3);line-height:1.7;margin-bottom:10px">
+          Using <strong style="color:var(--text-2)">browser localStorage</strong>. Data may be lost if browser storage is cleared.
+          Connect a folder to store tasks in a file you own — works offline, survives cache clearing.
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="Settings.connectFolder()">📂 Connect Folder</button>`;
+    }
+  },
+
+  async connectFolder() {
+    const ok = await StorageManager.connectFolder();
+    if (ok) {
+      this._renderStorageStatus();
+      Storage._setIndicator(true, 'saved');
+      Toast.show('Connected — tasks saved to ' + StorageManager.getFolderName(), 'success');
+    } else {
+      Toast.show('No folder selected.', 'info');
+    }
+  },
+
+  async disconnectFolder() {
+    if (!confirm('Disconnect this folder? Tasks will continue saving to browser storage.')) return;
+    await StorageManager.disconnectFolder();
+    this._renderStorageStatus();
+    Toast.show('Folder disconnected — using browser storage', 'info');
   },
 
   clearAllData() {
@@ -5316,7 +5765,10 @@ const Report = {
 // ================================================================
 // BOOT
 // ================================================================
-document.addEventListener('DOMContentLoaded', () => App.init());
+document.addEventListener('DOMContentLoaded', async () => {
+  await StorageManager.init();
+  App.init();
+});
 </script>
 
 <!-- Report print container — populated by Report.generate(), shown only @media print -->

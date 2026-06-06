@@ -1,13 +1,39 @@
 # WIP Flow — Development TODO
 
 Items grouped by priority. Bugs are confirmed against the current source (`WIPflow.html`).
-Last analysis: 2026-06-03 (v2.2 shipped — logo + Settings refactor). Master is clean.
+Last analysis: 2026-06-06 (v2.3 shipped — File Storage refactor). Master is clean.
 
 ---
 
 ## ToDo
 
-*(No open items.)*
+*(No open items — backlog is clean after v2.3.)*
+
+---
+
+## ✅ Completed (recent — full history below)
+
+### v2.3 (2026-06-06)
+
+**File Storage refactor — user-owned `tasks.json` with File System Access API**
+
+- New `IDB` module: IndexedDB helper for persisting `FileSystemDirectoryHandle` across sessions
+- New `FileSystemStorageProvider`: File System Access API provider — `chooseFolder`, `load`, `save`, `loadBackup`, `disconnect`; write-safe (backs up `tasks.json` → `tasks.backup.json` before every write)
+- New `StorageManager`: async startup orchestrator — provider selection, first-time setup dialog, localStorage migration, external-change detection, page-lifecycle save hooks
+- First-time setup overlay (`#setup-overlay`): shown once on first launch in Chrome/Edge; user chooses a folder or continues with browser storage
+- Migration: if localStorage data exists when a folder is connected, it is automatically written to `tasks.json`; localStorage kept as safety backup
+- Corruption recovery: if `tasks.json` cannot be parsed on startup, `tasks.backup.json` is loaded automatically and a toast is shown
+- External-change detection: on tab focus, `tasks.json` modification time is checked; if changed externally, a reload offer is shown
+- `Storage.save()` rewritten to delegate to `StorageManager._doSave()`; always writes localStorage as safety net
+- `Storage.load()` removed; data loading now handled by async `StorageManager.init()` before `App.init()`
+- `Storage.markDirty()` debounce changed from 400 ms to 500 ms
+- Save indicator: shows 📁 prefix when file storage is active; error state (red dot) on write failure
+- Settings → Storage card: shows current provider, folder name, Connect / Change / Disconnect actions
+- Immediate save on tab hide and page unload (`visibilitychange` + `beforeunload`)
+- `App.init()` no longer calls `Storage.load()`; seeds demo data only if `AppState.tasks` is empty
+- Boot changed to `async`: `await StorageManager.init()` before `App.init()`
+- Graceful degradation: app fully functional in Firefox (no FSAPI) and any browser via localStorage fallback
+- All existing export/import/print functionality preserved unchanged
 
 ---
 

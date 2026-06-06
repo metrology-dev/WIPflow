@@ -27,7 +27,10 @@ The entire application lives in `WIPflow.html` (~4 830 lines), structured as a s
 - **`WorkCalendar`** — Date arithmetic: `isWorkday`, `calcEndDate(startStr, workdays, allocPct)`, `fmt`, `parse`. Skips weekends and holidays from `AppState.settings.holidays`.
 - **`AppState`** — In-memory store: `tasks[]`, `settings{}`. CRUD via `saveTask(data)`, `deleteTask(id)`, `getTask(id)`, `getFilteredTasks(filters, sortCol, sortDir)`, serialised via `toJSON/fromJSON`. `getFilteredTasks` supports a `filters.selectedDate` (YYYY-MM-DD) to restrict results to tasks spanning that date.
 - **`GlobalFilter`** — Shared runtime filter state: `selectedDate` (YYYY-MM-DD or null). `setDate(date)` toggles selection; `clearDate()` resets. Calls `SidebarCalendar.render()` and `App.refresh()` on every change. Not persisted to storage.
-- **`Storage`** — Persistence: `save()` writes to localStorage + DOM tag; `exportHTML()` downloads a versioned self-contained file; `exportFile()` downloads a `.labwip` JSON; `exportCSV()` CSV (one-way); `exportXLS()` SpreadsheetML; `markDirty()` debounces a save by 400 ms.
+- **`IDB`** — IndexedDB helper. Persists `FileSystemDirectoryHandle` across sessions via `get/set/del(key)`.
+- **`FileSystemStorageProvider`** — File System Access API storage provider. `init()` restores a stored handle; `chooseFolder()` shows the OS picker; `save(json)` backs up `tasks.json` → `tasks.backup.json` before writing; `load()` / `loadBackup()` read those files. `supported` is `false` in Firefox (no FSAPI).
+- **`StorageManager`** — Async startup orchestrator. `init()` runs before `App.init()`: tries FS handle, shows first-time setup overlay if needed, falls back to localStorage. `_doSave(json)` writes to FS + localStorage. Registers `visibilitychange` / `beforeunload` hooks. `connectFolder()` / `disconnectFolder()` called from Settings.
+- **`Storage`** — Persistence facade. `save()` delegates to `StorageManager._doSave()`; always keeps localStorage as safety net; updates the autosave indicator. `exportHTML()` / `exportFile()` / `exportCSV()` / `exportXLS()` unchanged. `markDirty()` debounces 500 ms. `load()` removed (data loaded by `StorageManager.init()` before `App.init()`).
 - **`App`** — Lifecycle: `init()`, `refresh()`, `switchView(name)`, autosave timer. `refresh()` re-renders the active view and calls `SidebarCalendar.render()` — it does NOT call `markDirty()`.
 - **`TaskModal`** — Create/edit dialog. `open(taskId?)` populates from `AppState.getTask`; `save()` captures `wasEdit` before `close()`, then calls `AppState.saveTask`, `Storage.markDirty()`, and `App.refresh()`.
 - **`Dashboard`** — Canvas-based KPI charts. When `GlobalFilter.selectedDate` is set, filters the task list before computing KPIs and charts. Uses `ResizeObserver` to redraw on resize. Shows empty state (with appropriate message) when filtered task list is empty.
@@ -44,15 +47,25 @@ The entire application lives in `WIPflow.html` (~4 830 lines), structured as a s
 
 ```
 mutation (saveTask / deleteTask / onDrop)
-  └─► Storage.markDirty()          ← debounced 400 ms
+  └─► Storage.markDirty()                 ← debounced 500 ms
         └─► Storage.save()
-              ├─► localStorage.setItem(STORAGE_KEY, json)
-              └─► <script id="labwip-embedded-data"> updated in DOM
+              └─► StorageManager._doSave(json)
+                    ├─► localStorage.setItem(STORAGE_KEY, json)   ← always (safety net)
+                    ├─► <script id="labwip-embedded-data"> updated in DOM
+                    └─► FileSystemStorageProvider.save(json)       ← if FS active
+                          ├─► tasks.json → tasks.backup.json       ← backup first
+                          └─► tasks.json ← new content
 
 portable export:
   Storage.exportHTML()
     ├─► AppState.settings.saveVersion++
     └─► downloads WIPflow_vMAJOR.MINOR.SAVE.html
+
+async startup:
+  StorageManager.init()    ← runs BEFORE App.init()
+    ├─► FileSystemStorageProvider.init()  ← restore IDB handle + request permission
+    ├─► (or) show #setup-overlay          ← first-time in Chrome/Edge
+    └─► (or) _loadFromLocalStorage()      ← fallback
 ```
 
 Settings mutations (holiday add/remove, theme change, list edits) call `Storage.save()` directly since they need an immediate write.
