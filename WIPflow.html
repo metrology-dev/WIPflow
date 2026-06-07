@@ -2217,6 +2217,15 @@ tr.overdue td.td-name { color: var(--red); }
           <div class="card full">
             <div class="card-header"><span class="card-title">Changelog</span></div>
             <div class="doc-body">
+              <p><strong>v2.5</strong> — Automated testing infrastructure</p>
+              <ul>
+                <li>Vitest unit + integration test suite (108 tests): WorkCalendar date math, AppState CRUD and serialisation, migration logic, filter logic, activity categories</li>
+                <li>Playwright E2E test suite (25 tests): task creation/editing/deletion, calendar filtering, settings, view navigation, localStorage persistence</li>
+                <li>Golden dataset fixture (<code>tests/fixtures/golden-project.wipflow</code>): 143 realistic tasks across 12 labs, 8 priorities, 12 statuses, 5 persons — used in automated filter and save/load integrity checks</li>
+                <li>Legacy migration fixtures for v1 (string statuses) and v2 (partial objects) formats — every migration path is verified automatically</li>
+                <li>vm-based test setup: production JS is extracted from <code>WIPflow.html</code> at test time — no code duplication, no separate build step</li>
+                <li>Run with <code>npm test</code> (unit + integration) and <code>npm run test:e2e</code> (E2E)</li>
+              </ul>
               <p><strong>v2.4</strong> — Calendar activity categories decoupled from status names</p>
               <ul>
                 <li>Status objects now carry an <strong>Activity Category</strong> (<em>Planned Work</em>, <em>Active Work</em>, <em>Attention Needed</em>, <em>No Calendar Marker</em>) that controls calendar dot rendering — calendar logic no longer depends on status names</li>
@@ -2489,7 +2498,7 @@ tr.overdue td.td-name { color: var(--red); }
 // ================================================================
 // CONSTANTS & DEFAULT CONFIG
 // ================================================================
-const APP_BASE_VERSION = '2.4';  // MAJOR.MINOR — increment manually
+const APP_BASE_VERSION = '2.5';  // MAJOR.MINOR — increment manually
 const APP_VERSION = APP_BASE_VERSION;
 const STORAGE_KEY = 'labwip_data';
 

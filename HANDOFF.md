@@ -1,17 +1,88 @@
 # WIP Flow — Agent Handoff
 
 **Branch:** `master`
-**Version:** 2.4
-**Date:** 2026-06-06
+**Version:** 2.5
+**Date:** 2026-06-07
 **Status:** Shipped and merged.
 
 ---
 
 ## Current state
 
-WIP Flow is a single-file offline-first HTML app (`WIPflow.html`). All code is inline — no build step. Open directly in a browser (Firefox primary, Chrome/Edge for file storage) to run. The file is ~5 900 lines.
+WIP Flow is a single-file offline-first HTML app (`WIPflow.html`). All code is inline — no build step. Open directly in a browser (Firefox primary, Chrome/Edge for file storage) to run. The file is ~5 920 lines.
 
-The app is on version **2.4**. The backlog in `TODO.md` is clean — no open items.
+The app is on version **2.5**. A full automated testing infrastructure was added in this session. The `TODO.md` backlog is clean — no open items.
+
+---
+
+## What shipped in v2.5
+
+**Automated testing infrastructure** — Vitest unit/integration tests + Playwright E2E tests.
+
+### Summary
+
+- **108 unit + integration tests** (Vitest, ~300 ms): business logic, migrations, filter logic, fixture loading
+- **25 E2E tests** (Playwright Chromium): task workflows, settings, calendar filtering, localStorage persistence
+- **Golden dataset**: `tests/fixtures/golden-project.wipflow` — 143 realistic tasks, all categories, all filters exercised
+- **Legacy migration fixtures**: `legacy-v1.wipflow` (string statuses), `legacy-v2.wipflow` (partial/invalid objects)
+- **vm-based test setup**: `tests/setup/wipflow-env.js` loads production code from `WIPflow.html` at test time — no code duplication, no separate build step
+
+### Run commands
+
+```bash
+npm test            # unit + integration (Vitest, ~300 ms)
+npm run test:e2e    # E2E (Playwright Chromium, ~30 s, requires Python HTTP server on :5501)
+npm run test:all    # both
+```
+
+### Directory structure
+
+```
+package.json              – npm deps (vitest, playwright)
+vitest.config.js          – Vitest configuration
+playwright.config.js      – Playwright configuration (webServer: python -m http.server 5501)
+tests/
+  setup/
+    wipflow-env.js        – vm-based WIPflow.html loader; exposes all modules on globalThis
+  unit/
+    work-calendar.test.js – WorkCalendar pure date-math tests (37 tests)
+    app-state.test.js     – AppState CRUD, serialisation, filter tests (39 tests)
+    migration.test.js     – migrateStatusCategory, fromJSON migration tests (32 tests)
+  integration/
+    fixtures.test.js      – Loads all three fixture files, verifies data integrity
+  e2e/
+    helpers.js            – Shared selectors/helpers (DOM IDs derived from WIPflow.html)
+    task-management.spec.js – Task create/edit/delete, end-date calc, Escape key
+    settings.spec.js      – View navigation, theme, status list, calendar settings
+    calendar-filter.spec.js – Calendar render, navigation, date filter activation
+    persistence.spec.js   – localStorage round-trip across page reload
+  fixtures/
+    golden-project.wipflow    – 143-task realistic golden dataset
+    legacy-v1.wipflow         – v1.x format: plain string statuses
+    legacy-v2.wipflow         – v2.x format: partial/invalid activityCategory objects
+    generate-golden.mjs       – Generator script (not a test; run manually if dataset needs regeneration)
+```
+
+### Key technical notes for tests
+
+- **vm-based loader**: reads `WIPflow.html`, extracts the main `<script>` tag, transforms `^const/let ` → `^var ` (top-level only via `^` + multiline), strips the `DOMContentLoaded` boot listener, runs via `vm.Script.runInContext`. Since `var` at top level in a vm script becomes a property of the context, all modules are accessible via `sandbox.WorkCalendar` etc., then promoted to `globalThis` so Vitest tests can use them without imports.
+- **DOM stubs**: the sandbox includes lightweight stubs for `document`, `localStorage`, `indexedDB`, `window.addEventListener`, etc. Module *methods* reference DOM lazily (inside method bodies), not at definition time — only the sandbox stubs matter.
+- **E2E selectors** (key mappings from WIPflow.html):
+  - Nav buttons: `[data-view="dashboard"]` etc.
+  - Modal: `#modal-overlay` (class `open` when visible), fields: `#f-name`, `#f-lab`, `#f-person`, `#f-priority`, `#f-status`, `#f-start`, `#f-workdays`, `#f-alloc`, `#f-enddate`
+  - Save: `button:has-text("Save Task")`; Delete: `#modal-delete-btn`
+  - Calendar: `.cal-nav-btn` (prev/next), `.cal-today-btn`, `.cal-month-title`
+  - Date filter bar: `#date-filter-bar`
+  - Theme: `#theme-dark`, `#theme-light`
+  - Status list: `#list-statuses`
+
+### Testing conventions (for all future changes)
+
+1. Run `npm test` before every commit.
+2. Run `npm run test:e2e` before every release.
+3. Every bug fix must add a regression test in the appropriate `tests/unit/` or `tests/integration/` file.
+4. Every new feature must add unit tests and, for user-visible features, at least one E2E test.
+5. Never skip or disable failing tests — fix the root cause.
 
 ---
 
@@ -69,89 +140,12 @@ All code that previously iterated `AppState.settings.statuses` as strings now ex
 - `KanbanView._cardHtml()` — status options map uses `s.name`
 - `GanttFilters.render()` — `setOpts('gantt-filter-status', ...)` receives `.map(s => s.name)`
 
-### HTML changes
-
-- Settings → Task Statuses card: subtitle and helper text updated to mention Activity Category.
-- Help view: calendar dot descriptions updated to describe activity categories, not hard-coded status names.
-- About view: v2.4 changelog entry added.
-
----
-
-## What shipped in v2.3
-
-**File Storage refactor** — user-owned `tasks.json` with File System Access API.
-
-Three new JS modules were added between `GlobalFilter` and `Storage`:
-
-### `IDB`
-IndexedDB helper. Persists `FileSystemDirectoryHandle` across browser sessions via `get/set/del(key)`. Used only by `FileSystemStorageProvider`.
-
-### `FileSystemStorageProvider`
-File System Access API wrapper.
-
-- `supported` — `false` in Firefox; `true` in Chrome ≥ 86 / Edge ≥ 86
-- `init()` — restores a stored handle from IDB, calls `requestPermission`. Returns `true` if ready.
-- `chooseFolder()` — shows OS directory picker, persists handle in IDB. Returns `true` on success.
-- `disconnect()` — removes handle from IDB.
-- `load()` — reads and parses `tasks.json`. Returns `null` if file doesn't exist.
-- `loadBackup()` — reads and parses `tasks.backup.json`. Returns `null` on any error.
-- `save(json)` — write-safe: copies `tasks.json` → `tasks.backup.json`, then writes new `tasks.json`.
-- `_readRaw / _writeRaw` — internal file handle helpers.
-- `getFolderName()` — returns `_dirHandle.name` or `null`.
-
-### `StorageManager`
-Async startup orchestrator. **Runs before `App.init()`.**
-
-- `init()` — async entry point called from boot. Tries FS, shows setup overlay if needed, falls back to localStorage. Registers page-lifecycle event hooks.
-- `_loadFromFS()` — calls `FileSystemStorageProvider.load()`; falls back to backup or localStorage on failure.
-- `_migrateLocalStorageToFS()` — copies localStorage data to `tasks.json` when a folder is first connected.
-- `_loadFromLocalStorage()` — existing score-based logic (embedded data vs. localStorage; whichever has newer tasks wins).
-- `_showSetup()` — returns a Promise that resolves when the user makes a choice in `#setup-overlay`.
-- `_registerPageEvents()` — attaches `visibilitychange` (immediate save + external change check) and `beforeunload` (localStorage sync) handlers.
-- `_checkExternalChange()` — on tab focus, compares `tasks.json` `lastModified` against `_lastSavedTime`; offers reload if externally changed.
-- `_doSave(json)` — writes to localStorage (always), updates embedded `<script>` tag, writes to FS if active. Returns `true` on success.
-- `isFileSystemActive()` — `true` when FS folder is connected and handle exists.
-- `getFolderName()` — delegates to provider.
-- `connectFolder()` / `disconnectFolder()` — called from `Settings`.
-
-### Changed: `Storage`
-
-- `save()` — now synchronous wrapper: serialises AppState, calls `StorageManager._doSave(json).then(...)` to update indicator. Fire-and-forget.
-- `load()` — **removed**. Data is loaded by `StorageManager.init()` before `App.init()` runs.
-- `markDirty()` — debounce changed 400 ms → 500 ms.
-- `_setIndicator(ok, status)` — accepts `status` string (`'saving'`, `'saved'`, `'error'`, `'unsaved'`). Shows `📁 ` prefix when FS is active; red dot on `'error'`.
-
-### Changed: `App.init()`
-
-- Removed `Storage.load()` call. Seeds demo data only if `AppState.tasks.length === 0`.
-- Shows a recovery toast (deferred from async startup) if `StorageManager._showRecoveryToast` is set.
-
-### Changed: Boot
-
-```js
-// was: document.addEventListener('DOMContentLoaded', () => App.init());
-document.addEventListener('DOMContentLoaded', async () => {
-  await StorageManager.init();
-  App.init();
-});
-```
-
-### New HTML
-
-- `#setup-overlay` — full-screen first-time setup card; hidden (`display:none`); shown by `StorageManager._showSetup()`. Has `#setup-choose-folder` and `#setup-use-browser` buttons.
-- Settings → Storage card (`#storage-status-content`) — rendered by `Settings._renderStorageStatus()`.
-
-### New Settings methods
-
-- `_renderStorageStatus()` — populates `#storage-status-content`; adapts to FS active / inactive / not supported.
-- `connectFolder()` / `disconnectFolder()` — async; call `StorageManager` then re-render.
-
 ---
 
 ## Architecture quick-reference
 
 ```
-WIPflow.html (~5 900 lines)
+WIPflow.html (~5 920 lines)
 │
 ├── CSS (lines ~10–1350)
 ├── HTML (lines ~1350–2490)
@@ -160,7 +154,7 @@ WIPflow.html (~5 900 lines)
 │   ├── #sidebar
 │   │   ├── #sidebar-logo
 │   │   ├── #sidebar-scroll-area → nav
-│   │   │   ├── Views buttons
+│   │   │   ├── Views buttons      [data-view="..."]
 │   │   │   ├── [divider]
 │   │   │   ├── #sidebar-calendar-section
 │   │   │   ├── [divider]
@@ -173,8 +167,8 @@ WIPflow.html (~5 900 lines)
 │
 └── JS (lines ~2490–end)
     ├── DEFAULT_SETTINGS           statuses now [{name, activityCategory}] objects
-    ├── ACTIVITY_CATEGORIES        NEW — stable system-defined dot categories
-    ├── migrateStatusCategory()    NEW — name→category legacy migration helper
+    ├── ACTIVITY_CATEGORIES        NEW in v2.4 — stable system-defined dot categories
+    ├── migrateStatusCategory()    NEW in v2.4 — name→category legacy migration helper
     ├── WorkCalendar
     ├── AppState                   fromJSON migrates legacy string statuses
     ├── grp()
@@ -207,19 +201,20 @@ WIPflow.html (~5 900 lines)
 - `VALID_ACTIVITY_CATEGORIES` — validate before storing any activityCategory value.
 - FS API (`showDirectoryPicker`) requires Chrome/Edge. Firefox gets localStorage fallback automatically.
 - `StorageManager.init()` is async and must resolve before `App.init()` runs.
-- After any fix: bump `APP_BASE_VERSION` MINOR, update Help/About in-app views, update `TODO.md`, commit.
-- Stage only `WIPflow.html` and intentionally changed markdown files. Never commit `.labwip`, `.json`, CSV, or temp files.
+- After any fix: bump `APP_BASE_VERSION` MINOR, update Help/About in-app views, update `TODO.md`, run `npm test`, commit.
+- Stage only `WIPflow.html`, markdown files, and test files that were intentionally changed. Never commit `.labwip`, `.json`, CSV, or temp files. Never commit `node_modules/` or `test-results/`.
 - The `tasks.json` and `tasks.backup.json` files are user data — never commit them.
 
 ---
 
 ## If you pick this up next
 
-No open TODO items. Possible future directions:
+No open TODO items. Possible future directions (in `TODO.md`):
 
-- Settings: "Clear browser localStorage backup" button for migrated users who want to clean up
+- Settings: "Clear browser localStorage backup" button for migrated users
 - Settings: Show `tasks.json` file path or last-saved timestamp
 - Conflict resolution when external changes are detected (merge instead of replace)
-- Calendar click: "Open Task List" mode, task creation from calendar, date range selection
+- Calendar: task creation from calendar, date range selection
 - Week / agenda view in the sidebar calendar
-- Status color: add a `color` field to status objects (currently `getStatusColor` uses a hard-coded name→CSS-var map); user-configurable colors per status
+- Status color: user-configurable colors per status
+- E2E tests: add Firefox project to Playwright config
