@@ -16,10 +16,13 @@ Thumbs.db
 .DS_Store
 desktop.ini
 
-# Editor
+# Editor / IDE
 .vscode/
 *.swp
 *~
+
+# Claude Code local settings (contains machine-specific paths)
+.claude/
 
 # Node.js / testing
 node_modules/
