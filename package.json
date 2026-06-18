@@ -1,6 +1,6 @@
 {
   "name": "wipflow",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "WIP Flow — single-file offline-first lab WIP tracker",
   "type": "module",
   "scripts": {

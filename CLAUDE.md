@@ -86,7 +86,7 @@ Version format: `MAJOR.MINOR.SAVE`
 - **MINOR** — Developer edits `APP_BASE_VERSION`. Use for bug fixes and small improvements.
 - **SAVE** — Incremented automatically each time the user clicks "Save as HTML".
 
-`APP_BASE_VERSION` is a constant near the top of the JS section (e.g. `const APP_BASE_VERSION = '2.4';`).
+`APP_BASE_VERSION` is a constant near the top of the JS section (e.g. `const APP_BASE_VERSION = '2.5';`).
 `saveVersion` lives in `AppState.settings` and persists in localStorage and embedded data.
 
 **Rule of thumb:** bump MINOR when shipping a fix or small feature; bump MAJOR for breaking changes.

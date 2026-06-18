@@ -12,12 +12,22 @@ README.md              # User-facing documentation for GitHub
 CLAUDE.md              # Architecture notes and conventions for AI-assisted development
 TODO.md                # Backlog and completed change log
 HANDOFF.md             # Context for handing off development across sessions
+LICENSE                # GPL-3.0 license text
+package.json           # Dev dependencies and test scripts (no runtime dependencies)
+vitest.config.js       # Vitest config for unit/integration tests
+playwright.config.js   # Playwright config for end-to-end tests
 docs/
   ARCHITECTURE.md      # This file — module map and data flow reference
   DATA_SCHEMA.md       # Task and settings JSON schema reference
 Icons/
   WIPFlow_logo_new_small.png   # App logo (embedded as base64 in WIPflow.html)
   WIPFlow_logo_new.svg         # Source SVG for the logo
+tests/
+  setup/wipflow-env.js         # vm-based loader that extracts <script> from WIPflow.html for tests
+  unit/                        # Unit tests (AppState, WorkCalendar, migration)
+  integration/                 # Fixture round-trip tests
+  fixtures/                    # Golden and legacy .wipflow files used by tests
+  e2e/                         # Playwright browser tests
 ```
 
 ---
@@ -148,6 +158,23 @@ GlobalFilter.setDate(date) / GlobalFilter.clearDate()
 - **`AppState.settings.statuses`** — `{name, activityCategory}[]` since v2.4. Always use `.name` when you need the display string. `VALID_ACTIVITY_CATEGORIES` is the authoritative validation list. `migrateStatusCategory()` handles legacy string entries automatically in `fromJSON`.
 - **Holiday changes** — call `App.refresh()` after `Storage.save()` so all end dates recalculate.
 - **Theme changes** — call `render()` for canvas-based views (Dashboard, Gantt) and `KanbanView.render()` in `Settings.setTheme()`.
+
+---
+
+## Testing (since v2.5)
+
+Tests run against the production code in `WIPflow.html` directly — there is no separate build or duplicated module source.
+
+```
+tests/setup/wipflow-env.js
+  ├─► reads WIPflow.html, extracts the main <script> contents
+  ├─► rewrites top-level const/let to var so each module becomes a vm context property
+  └─► runs the rewritten script in a Node `vm` context, exposing all modules on globalThis
+```
+
+- **Unit/integration** (`npm test`) — Vitest, covers `AppState`, `WorkCalendar`, status migration, and fixture round-trips against `tests/fixtures/*.wipflow`.
+- **End-to-end** (`npm run test:e2e`) — Playwright, drives the app in a real browser (calendar filtering, persistence, settings, task management).
+- Fixtures (`golden-project.wipflow`, `legacy-v1.wipflow`, `legacy-v2.wipflow`) use synthetic data only — never real task data.
 
 ---
 
