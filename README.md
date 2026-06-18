@@ -258,6 +258,7 @@ New settings keys added to `DEFAULT_SETTINGS` appear automatically for existing 
 
 ## Changelog
 
+- **v2.5** — Automated testing infrastructure (Vitest unit/integration tests and Playwright end-to-end tests)
 - **v2.4** — Calendar activity categories: each status now carries an *Activity Category* (Planned Work / Active Work / Attention Needed / No Calendar Marker) that controls calendar dot rendering; Settings → Task Statuses adds an Activity Category dropdown per status; legacy files auto-migrate on load
 - **v2.3** — File storage with File System Access API; `tasks.json` with write-safe backup; first-time setup; migration from localStorage; external-change detection; Settings → Storage card
 - **v2.2** — New app logo; Settings page redesigned as vertically stacked full-width cards
@@ -271,3 +272,14 @@ New settings keys added to `DEFAULT_SETTINGS` appear automatically for existing 
 - **v1.4** — Light theme colours; end-date off-by-one fix; HTML-escaping hardening
 - **v1.3** — Logo and layout polish; security cleanup
 - **v1.2** — Versioning system; Kanban improvements; Gantt tooltip fix
+
+---
+
+## License
+
+Copyright (C) 2026 Daniel Rosik
+
+WIP Flow is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See [LICENSE](LICENSE) for the full text.

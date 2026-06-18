@@ -38,3 +38,8 @@ blob-report/
 # tasks.json and tasks.backup.json are user data files, never part of source
 tasks.json
 tasks.backup.json
+
+# Secrets — git/GitHub tokens and keys. NEVER commit. .env.example is the safe template.
+.env
+.env.*
+!.env.example
