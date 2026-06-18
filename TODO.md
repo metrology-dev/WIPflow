@@ -16,6 +16,7 @@ No open items. Possible future directions:
 - Week / agenda view in the sidebar calendar
 - Status color: add a `color` field to status objects; user-configurable colors per status
 - E2E tests: add Firefox project to Playwright config once selector compatibility is verified
+- Adopt Material Design 3 (MD3) as the system-wide design language — typography/fonts, color tokens, component styles (buttons, inputs, cards, dialogs), and elevation/shape conventions, applied consistently across all views (Dashboard, Table, Gantt, Kanban, Settings, Help, About)
 
 ---
 
