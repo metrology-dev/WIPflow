@@ -149,7 +149,7 @@ Starting from the start date, the app counts forward that many calendar workdays
 | Priorities | Add/remove priority levels |
 | Statuses | Add/remove task statuses; set Activity Category per status to control calendar dot rendering |
 | Tags | Add/remove tags |
-| Holidays | Add dates (with optional names) excluded from workday calculations; import from CSV |
+| Holidays | Add dates (with optional names) excluded from workday calculations; import from CSV — see [examples/swedish-holidays-2026.csv](examples/swedish-holidays-2026.csv) for the expected format |
 | Theme | Dark or light |
 | Autosave | Periodic save interval in minutes (0 to disable) |
 | Group Terminology | Rename the grouping concept (singular + plural) |
