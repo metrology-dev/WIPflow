@@ -2,13 +2,14 @@
 
 WIP Flow stores task data in several places simultaneously:
 
-- **`wipflow-data.json`** — the owned data file, and the source of truth. Written silently on every change via the File System Access API in Chrome/Edge; written as a download on Save and on tab close in Firefox/Safari, and read back automatically at startup when it sits beside `WIPflow.html`
-- **Browser storage** — always active, under the key `labwip_data`. The fastest layer, and the one read when the data file is missing, unreadable or older
-- **IndexedDB (`wipflow`)** — holds the persisted data-file handle and, in the `backups` store, the last 12 revisions as restore points
+- **`wipflow-data.json`** — the owned data file. In Chrome/Edge it is the source of truth: written silently on every change via the File System Access API, with the previous version copied to `wipflow-data.json.bak1` (then `.bak2` … `.bak9`) before each write, and the canonical name always holding the newest data. In Firefox/Safari it is a one-way export, because those engines refuse to let a page read local files
+- **Browser storage** — always active, under the key `labwip_data`. The fastest layer, and the working copy wherever the data file cannot be read back
+- **IndexedDB (`wipflow`)** — holds the persisted data-folder handle (`kv` store) and, in the `backups` store, the last 12 revisions as restore points
 - **`<script id="labwip-embedded-data">`** — inside the HTML file; kept in sync on every save and used as the payload for the **↓ Portable snapshot** export, and as a fallback source when nothing else has data
 
 All representations use the same JSON envelope, distinguished by a `revision` counter that
-decides which copy is newer. A copy is never chosen by timestamp.
+decides which copy is newer. A copy is never chosen by timestamp, and where several files are
+present (browsers name repeated downloads `name(1).json`) the highest revision always wins.
 
 ---
 
@@ -141,7 +142,8 @@ New keys added to `DEFAULT_SETTINGS` appear automatically for existing users on 
 
 | Format | Extension | Re-importable | Notes |
 |--------|-----------|---------------|-------|
-| Data file | `.json` | Yes | `wipflow-data.json` — the live source of truth |
+| Data file | `.json` | Yes (via **Load data file…**) | `wipflow-data.json` — the live source of truth in Chrome/Edge |
+| Backup history | `.json.bakN` | Yes | `wipflow-data.json.bak1` … `.bak9`, written where the app may write files. The canonical file always holds the newest data |
 | Self-contained HTML | `.html` | No (open directly) | Portable snapshot with the data embedded in a `<script>` tag |
 | Backup snapshot | `.labwip` | Yes | Plain JSON — the envelope above |
 | CSV | `.csv` | No | One-way export for spreadsheets |
@@ -156,3 +158,4 @@ New keys added to `DEFAULT_SETTINGS` appear automatically for existing users on 
 - `settings.statuses` was a plain string array before v2.4. `AppState.fromJSON` auto-migrates legacy string entries to `{name, activityCategory}` objects using name-based heuristics (case-insensitive). Unknown names default to `activityCategory: "none"`. No data is lost.
 - Payloads without `revision` (v2.5 and earlier) are treated as revision 1.
 - The pre-3.0 browser storage key `wipflow_data` is read once on first run, adopted, and then removed once the data has been written to the new key. Nothing is discarded.
+- **Local file reads are not universally available.** Firefox blocks them by default (`security.fileuri.strict_origin_policy = true`); Chromium and WebKit refuse `file://` requests outright. `DataFile.canRead()` reports this, and the UI states it instead of failing silently. Where reads are blocked the data file must be loaded explicitly with **Load data file…**.

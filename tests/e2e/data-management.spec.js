@@ -29,6 +29,32 @@ async function freshLoad(page) {
   await page.evaluate(() => { localStorage.clear(); });
   await page.reload();
   await waitForApp(page);
+  // Startup loading is asynchronous; make sure it has settled before asserting.
+  await page.waitForFunction(() => {
+    const overlay = document.getElementById('setup-overlay');
+    return typeof AppState !== 'undefined' &&
+      (AppState.tasks.length > 0 || (overlay && overlay.style.display === 'flex'));
+  }, null, { timeout: 15000 });
+}
+
+/** Choose an option on the first-run overlay and wait for it to finish. */
+async function chooseFirstRun(page, id) {
+  await page.locator(id).click();
+  await page.waitForFunction(() => {
+    const o = document.getElementById('setup-overlay');
+    return o && o.style.display === 'none';
+  }, null, { timeout: 10000 });
+  await page.waitForTimeout(300);   // let the resulting save land
+}
+
+/** Wait until the browser copy holds a task with this name. */
+async function waitForCached(page, name) {
+  await page.waitForFunction(n => {
+    try {
+      const raw = localStorage.getItem('labwip_data');
+      return !!raw && (JSON.parse(raw).tasks || []).some(t => t.name === n);
+    } catch (e) { return false; }
+  }, name, { timeout: 12000 });
 }
 
 test.describe('First run', () => {
@@ -46,8 +72,7 @@ test.describe('First run', () => {
 
   test('starting empty leaves an empty project', async ({ page }) => {
     await freshLoad(page);
-    await page.locator('#setup-new').click();
-    await page.waitForTimeout(600);
+    await chooseFirstRun(page, '#setup-new');
 
     await expect(page.locator('#setup-overlay')).not.toBeVisible();
     expect(await page.evaluate(() => AppState.tasks.length)).toBe(0);
@@ -55,13 +80,21 @@ test.describe('First run', () => {
 
   test('loading the demonstration set is explicit', async ({ page }) => {
     await freshLoad(page);
-    await page.locator('#setup-load-demo').click();
-    await page.waitForTimeout(1500);
+    await chooseFirstRun(page, '#setup-load-demo');
 
     expect(await page.evaluate(() => AppState.tasks.length)).toBe(15);
-    // and it persists
+
+    // Wait for the write to land before reloading — the save is asynchronous.
+    await page.waitForFunction(() => {
+      try {
+        const raw = localStorage.getItem('labwip_data');
+        return !!raw && (JSON.parse(raw).tasks || []).length === 15;
+      } catch (e) { return false; }
+    }, null, { timeout: 12000 });
+
     await page.reload();
     await waitForApp(page);
+    await page.waitForFunction(() => AppState.tasks.length === 15, null, { timeout: 12000 });
     expect(await page.evaluate(() => AppState.tasks.length)).toBe(15);
   });
 });
@@ -69,15 +102,14 @@ test.describe('First run', () => {
 test.describe('Revision handling', () => {
   test('a save increments the revision and keeps the browser copy current', async ({ page }) => {
     await freshLoad(page);
-    await page.locator('#setup-new').click();
-    await page.waitForTimeout(500);
+    await chooseFirstRun(page, '#setup-new');
 
     const before = await page.evaluate(() => AppState.settings.revision || 0);
     await page.evaluate(t => {
       AppState.saveTask(t);
       Storage.markDirty();
     }, TASK('REV-TEST'));
-    await page.waitForTimeout(1200);
+    await waitForCached(page, 'REV-TEST');
 
     const after = await page.evaluate(() => AppState.settings.revision || 0);
     expect(after).toBeGreaterThan(before);
@@ -93,12 +125,11 @@ test.describe('Revision handling', () => {
 
   test('restore points accumulate and can be restored', async ({ page }) => {
     await freshLoad(page);
-    await page.locator('#setup-new').click();
-    await page.waitForTimeout(500);
+    await chooseFirstRun(page, '#setup-new');
 
     for (const n of ['RP-1', 'RP-2', 'RP-3']) {
       await page.evaluate(t => { AppState.saveTask(t); Storage.markDirty(); }, TASK(n));
-      await page.waitForTimeout(900);
+      await waitForCached(page, n);
     }
 
     const backups = await page.evaluate(() => StorageManager.listBackups());
@@ -112,55 +143,86 @@ test.describe('Revision handling', () => {
   });
 });
 
-test.describe('Data file (File System Access mock)', () => {
+test.describe('Data folder (File System Access mock)', () => {
+  // v3.1 connects a FOLDER, not a file, because that is what allows silent
+  // autosave plus .bak1…bak9 history on the canonical filename.
   const MOCK = `
-    window.__mock = { name: 'wipflow-data.json', text: null, writes: 0 };
-    function makeHandle() {
+    window.__files = {};
+    function makeDir() {
       return {
-        name: window.__mock.name, kind: 'file',
+        kind: 'directory', name: 'Data',
         queryPermission: async () => 'granted',
         requestPermission: async () => 'granted',
-        getFile: async () => ({
-          name: window.__mock.name, lastModified: Date.now(),
-          text: async () => window.__mock.text,
-        }),
-        createWritable: async () => ({
-          write: async (t) => { window.__mock.text = String(t); window.__mock.writes++; },
-          close: async () => {},
-        }),
+        getFileHandle: async (name, opts) => {
+          if (!(opts && opts.create) && !(name in window.__files)) {
+            const e = new Error('not found'); e.name = 'NotFoundError'; throw e;
+          }
+          if (!(name in window.__files)) window.__files[name] = '';
+          return {
+            name, kind: 'file',
+            getFile: async () => ({ name, lastModified: Date.now(), text: async () => window.__files[name] }),
+            createWritable: async () => ({
+              write: async (t) => { window.__files[name] = String(t); },
+              close: async () => {},
+            }),
+          };
+        },
+        removeEntry: async (name) => { delete window.__files[name]; },
       };
     }
-    window.showSaveFilePicker = async () => makeHandle();
-    window.showOpenFilePicker = async () => [makeHandle()];
+    window.showDirectoryPicker = async () => makeDir();
   `;
 
-  test('connecting a data file gives silent autosave', async ({ page }) => {
+  test('connecting a folder gives silent autosave with backup rotation', async ({ page }) => {
     await page.addInitScript(MOCK);
     await freshLoad(page);
-    await page.locator('#setup-new').click();
-    await page.waitForTimeout(500);
+    await chooseFirstRun(page, '#setup-new');
 
-    const connected = await page.evaluate(() => StorageManager.connectDataFile('open'));
+    const connected = await page.evaluate(() => StorageManager.connectDataFolder());
     expect(connected).toBe(true);
     expect(await page.evaluate(() => DataFile.provider)).toBe('fs');
 
-    await page.evaluate(t => { AppState.saveTask(t); Storage.markDirty(); }, TASK('FS-SAVED'));
-    await page.waitForTimeout(1500);
+    // Three revisions: the third write must leave .bak1 and .bak2 behind.
+    for (const n of ['FS-SAVED-1', 'FS-SAVED-2', 'FS-SAVED-3']) {
+      await page.evaluate(task => { AppState.saveTask(task); Storage.markDirty(); }, TASK(n));
+      // Wait for the write to reach the folder rather than guessing a delay.
+      await page.waitForFunction(name => {
+        try {
+          const raw = window.__files['wipflow-data.json'];
+          return !!raw && (JSON.parse(raw).tasks || []).some(t => t.name === name);
+        } catch (e) { return false; }
+      }, n, { timeout: 10000 });
+    }
 
-    const written = await page.evaluate(() => window.__mock.text);
-    expect(written).toBeTruthy();
-    const payload = JSON.parse(written);
-    expect(payload.tasks.map(t => t.name)).toContain('FS-SAVED');
-    expect(payload.revision).toBeGreaterThan(0);
-    expect(await page.evaluate(() => window.__mock.writes)).toBeGreaterThan(0);
+    const files = await page.evaluate(() => Object.keys(window.__files));
+    const canonical = await page.evaluate(() => {
+      try { return JSON.parse(window.__files['wipflow-data.json']); } catch (e) { return null; }
+    });
+    expect(canonical).not.toBeNull();
+    expect(canonical.tasks.map(t => t.name)).toContain('FS-SAVED-3');
+    expect(files).toContain('wipflow-data.json.bak1');
+    expect(files).toContain('wipflow-data.json.bak2');
+
+    // The canonical file must hold the highest revision of all of them.
+    const revs = await page.evaluate(() => {
+      const out = {};
+      for (const k of Object.keys(window.__files)) {
+        try { out[k] = JSON.parse(window.__files[k]).revision; } catch (e) { out[k] = null; }
+      }
+      return out;
+    });
+    const canonicalRev = revs['wipflow-data.json'];
+    for (const [name, rev] of Object.entries(revs)) {
+      if (name === 'wipflow-data.json' || rev == null) continue;
+      expect(rev).toBeLessThan(canonicalRev);
+    }
   });
 });
 
 test.describe('Data & Backup panel', () => {
   test('opens from the sidebar, reports state, and closes', async ({ page }) => {
     await freshLoad(page);
-    await page.locator('#setup-new').click();
-    await page.waitForTimeout(500);
+    await chooseFirstRun(page, '#setup-new');
 
     await page.locator('#autosave-indicator').click();
     await expect(page.locator('#data-panel-overlay')).toBeVisible();
@@ -177,15 +239,10 @@ test.describe('Data & Backup panel', () => {
 
   test('Settings shows a storage card with a Data & Backup action', async ({ page }) => {
     await freshLoad(page);
-    await page.locator('#setup-new').click();
-    await page.waitForTimeout(500);
+    await chooseFirstRun(page, '#setup-new');
 
     await page.locator('[data-view="settings"]').click();
-    await page.waitForTimeout(400);
-
-    const card = await page.locator('#storage-status-content').innerText();
-    expect(card.length).toBeGreaterThan(20);
-    expect(card).toMatch(/Data & Backup/i);
+    await expect(page.locator('#storage-status-content')).toContainText(/Data & Backup/i, { timeout: 5000 });
   });
 });
 
@@ -204,8 +261,7 @@ test.describe('Portable snapshot', () => {
 
   test('carries the data and opens with it', async ({ page, browser }) => {
     await freshLoad(page);
-    await page.locator('#setup-load-demo').click();
-    await page.waitForTimeout(1500);
+    await chooseFirstRun(page, '#setup-load-demo');
 
     const file = await exportSnapshot(page, tmpFile('snapshot.html'));
 
@@ -232,10 +288,9 @@ test.describe('Portable snapshot', () => {
   test('survives task text containing HTML and script-like content', async ({ page }) => {
     const HOSTILE = 'Weird </script> & <b>bold</b> "quoted" åäö ✓';
     await freshLoad(page);
-    await page.locator('#setup-new').click();
-    await page.waitForTimeout(500);
+    await chooseFirstRun(page, '#setup-new');
     await page.evaluate(t => { AppState.saveTask(t); Storage.markDirty(); }, TASK(HOSTILE));
-    await page.waitForTimeout(1200);
+    await waitForCached(page, HOSTILE);
 
     const file = await exportSnapshot(page, tmpFile('hostile.html'));
     const html = fs.readFileSync(file, 'utf8');

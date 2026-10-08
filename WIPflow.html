@@ -2104,33 +2104,52 @@ tr.overdue td.td-name { color: var(--red); }
           <div class="card full">
             <div class="card-header"><span class="card-title">Saving &amp; Portability</span></div>
             <div class="doc-body">
-              <p>WIP Flow keeps your work in three places at once, so a single failure never costs you data. Click the <strong>save status</strong> at the bottom of the sidebar to open <strong>Data &amp; Backup</strong> and see which route is active.</p>
-              <p><strong>1 — Your data file (source of truth)</strong><br>
-              WIP Flow owns a file called <code>wipflow-data.json</code>. It carries a revision number that increases with every save.</p>
+              <p>WIP Flow keeps your work in two places at once, so a single failure never costs you data. Click the <strong>save status</strong> at the bottom of the sidebar to open <strong>Data &amp; Backup</strong>, which always states exactly which route is active.</p>
+
+              <p><strong>What the browser allows decides everything</strong></p>
+              <p>A page is not normally allowed to write, or even read, files on your disk. Measured against a file sitting beside the app itself:</p>
+              <table class="doc-table">
+                <thead><tr><th>Browser</th><th>Write a file</th><th>Read a file</th><th>Result</th></tr></thead>
+                <tbody>
+                  <tr><td>Chrome / Edge</td><td>Yes, with your permission</td><td>Yes, from the folder you connect</td><td><strong>Fully automatic</strong> — one shared data file, silent autosave, <code>.bak</code> history</td></tr>
+                  <tr><td>Firefox</td><td>Only as a download</td><td><strong>No</strong> — blocked by default</td><td>The browser is the working copy; the data file is a one-way export</td></tr>
+                  <tr><td>Safari</td><td>Only as a download</td><td><strong>No</strong></td><td>As Firefox</td></tr>
+                </tbody>
+              </table>
+              <p>Firefox blocks local file reads through its own setting, <code>security.fileuri.strict_origin_policy</code>, which is <code>true</code> by default. WIP Flow detects this and says so, rather than appearing to fail.</p>
+
+              <p><strong>Chrome and Edge — the recommended setup</strong><br>
+              Open <strong>Data &amp; Backup</strong> and choose <strong>Connect data folder</strong>. Nominate one folder to hold <code>wipflow-data.json</code>. From then on:</p>
               <ul>
-                <li><strong>Chrome / Edge</strong> — connect the file once via <strong>Data &amp; Backup → Connect existing data file</strong>. Every change is then written straight into that file with no dialogs. This is the best experience.</li>
-                <li><strong>Firefox / Safari</strong> — these browsers do not let a page write files. WIP Flow therefore writes the file as a download when you press <strong>Save</strong> and when you close the tab, and reads it back automatically at startup. Put <code>wipflow-data.json</code> in the same folder as <code>WIPflow.html</code> and your work returns with no clicks.</li>
+                <li>every change is written into that file silently, with no dialogs;</li>
+                <li>the previous version is copied to <code>wipflow-data.json.bak1</code>, then <code>.bak2</code>, up to <code>.bak${BAK_LIMIT}</code>;</li>
+                <li>the canonical name always holds the newest data — history never displaces it;</li>
+                <li><strong>every copy of <code>WIPflow.html</code> on that computer shares the same folder</strong>, so you can run the app from as many locations as you like and they all read and write one file.</li>
               </ul>
-              <p><em>Why a file and not just the browser?</em> Browser storage on <code>file://</code> pages is tied to the exact file path — Firefox records the full path as the storage origin. Moving or renaming <code>WIPflow.html</code> therefore starts from an empty data set. A file you own travels with you; browser storage does not.</p>
-              <p><strong>2 — The browser copy (always current)</strong><br>
-              Every save also writes to browser storage. This is the fastest layer and the one WIP Flow reads when the data file is missing, unreadable or older. Treat it as a safety net, not the primary store.</p>
-              <p><strong>3 — Restore points, snapshots and backups</strong><br>
-              The last 12 revisions are kept automatically and can be restored from <strong>Data &amp; Backup → Restore points</strong>. <strong>Portable snapshot</strong> downloads a self-contained copy of the whole app with the data embedded — useful for archiving or handing to someone else. <strong>Export .labwip</strong> produces a plain JSON backup for interchange.</p>
+
+              <p><strong>Firefox and Safari</strong><br>
+              Your work is saved continuously in the browser, which is always current. Pressing <strong>Save</strong> and closing the tab also write <code>wipflow-data.json</code> as a download. Because the browser will not let the page read files back, that file is an export: use <strong>Load data file…</strong> in Data &amp; Backup to bring it back, and keep the copy safe. Browser storage here is tied to the exact file path, so moving or renaming <code>WIPflow.html</code> starts from an empty set — use the data file to carry work across.</p>
+
+              <p><strong>Restore points, snapshots and backups</strong><br>
+              The last 12 revisions are kept automatically and can be restored from <strong>Data &amp; Backup → Restore points</strong>, whatever the browser. <strong>Portable snapshot</strong> downloads a self-contained copy of the whole app with the data embedded. <strong>Export .labwip</strong> produces a plain JSON backup for interchange.</p>
+
               <p><strong>Moving the app to another computer</strong></p>
               <ol>
-                <li>Copy <code>WIPflow.html</code> <em>and</em> <code>wipflow-data.json</code> together — two files, one folder.</li>
-                <li>Open <code>WIPflow.html</code>. Your work is read from the file; in Chrome or Edge, connect the file once more for silent autosave.</li>
+                <li>Chrome/Edge: connect the data folder again on the new machine and point it at your file.</li>
+                <li>Firefox/Safari: open the app and use <strong>Load data file…</strong> to load the copy you carried over.</li>
               </ol>
+
               <p><strong>If two versions ever disagree</strong><br>
               WIP Flow shows both with their revision, task count and timestamp and asks which one you want. It never overwrites silently and never guesses from timestamps.</p>
+
               <p><strong>Save triggers:</strong></p>
               <table class="doc-table">
                 <thead><tr><th>Trigger</th><th>When</th><th>Behaviour</th></tr></thead>
                 <tbody>
                   <tr><td>Save-on-change</td><td>Every task/settings edit</td><td>Debounced 500 ms</td></tr>
-                  <tr><td>Tab hide / page unload</td><td>Tab switch, close, navigation</td><td>Immediate sync to localStorage + file</td></tr>
-                  <tr><td>Manual save</td><td>⬡ Save button or Ctrl+S</td><td>Immediate, shows toast</td></tr>
-                  <tr><td>Periodic autosave</td><td>Every N minutes (configurable)</td><td>Silent background write; set to 0 to disable</td></tr>
+                  <tr><td>Tab hide / page unload</td><td>Tab switch, close, navigation</td><td>Immediate sync to the browser copy; data file written where the browser allows it</td></tr>
+                  <tr><td>Manual save</td><td>⬡ Save button or Ctrl+S</td><td>Immediate, writes the data file, shows a toast</td></tr>
+                  <tr><td>Periodic autosave</td><td>Every N minutes (configurable)</td><td>Refreshes the browser copy; set to 0 to disable</td></tr>
                 </tbody>
               </table>
             </div>
@@ -2290,6 +2309,17 @@ tr.overdue td.td-name { color: var(--red); }
           <div class="card full">
             <div class="card-header"><span class="card-title">Changelog</span></div>
             <div class="doc-body">
+              <p><strong>v3.1</strong> — Corrected against real browsers</p>
+              <ul>
+                <li><strong>Measured what each browser actually permits, and made the app tell the truth about it.</strong> Testing against a default profile of each engine showed that Firefox blocks <em>every</em> local file read (<code>security.fileuri.strict_origin_policy</code> defaults to <code>true</code>), and Chromium and WebKit refuse <code>file://</code> requests outright. v3.0 assumed Firefox could read its data file back; on a default profile it cannot</li>
+                <li><strong>The app now detects this and says so.</strong> No more "file lagging" warnings on browsers that simply cannot read files. Data &amp; Backup reports <em>Local file reads: allowed / blocked by this browser</em>, and the save status reads <em>Saved · in this browser</em> instead of implying a file it cannot see</li>
+                <li><strong>Load data file…</strong> — a new explicit action that opens a file picker and loads a saved <code>wipflow-data.json</code> back into the app. This is the supported way to bring work back on Firefox and Safari, where automatic loading is impossible. An older file never replaces newer data without asking</li>
+                <li><strong>Backup history in files.</strong> Where the app may write files (Chrome/Edge), each save shifts <code>wipflow-data.json.bak(N)</code> to <code>.bak(N+1)</code> and copies the live file to <code>.bak1</code>, keeping <code>.bak1…bak${BAK_LIMIT}</code>. The canonical filename always holds the newest data — the revision is deliberately not part of the backup name, so nothing can outrank it</li>
+                <li><strong>One folder, many app copies.</strong> Chrome and Edge keep the folder permission in browser storage that is shared across all <code>file://</code> paths, so every copy of <code>WIPflow.html</code> on the machine reads and writes the same data file with no further prompts</li>
+                <li><strong>Browsers that rename downloads are handled.</strong> Where a page may only download, repeated files become <code>name(1).json</code>, <code>name(2).json</code>… — browser behaviour that cannot be disabled. Reads therefore never trust the filename: the app scans the data folder and loads the copy with the <strong>highest revision</strong>, so a stale canonical file can never win</li>
+                <li><strong>Write verification.</strong> After a download write the app re-reads the folder and reports if the newest file it can see is older than what it wrote, rather than assuming success</li>
+              </ul>
+              <p><strong>v3.0</strong> — Reliable data management</p>
               <p><strong>v3.0</strong> — Reliable data management</p>
               <ul>
                 <li><strong>Root cause fixed:</strong> the app previously relied on <code>localStorage</code> scoped to the exact file path. Moving, renaming or copying <code>WIPflow.html</code> silently started from an empty data set, and the app then seeded 15 demo tasks over it — so data loss looked like normal operation</li>
@@ -2563,7 +2593,7 @@ tr.overdue td.td-name { color: var(--red); }
         Load 15 demonstration tasks
       </button>
       <button class="btn btn-secondary" id="setup-attach" style="font-size:13px;padding:8px 20px">
-        Connect a data file…
+        Connect a data folder…
       </button>
       <button class="btn btn-ghost" id="setup-import" style="font-size:13px;padding:8px 20px">
         Import a .labwip backup…
@@ -2610,7 +2640,7 @@ tr.overdue td.td-name { color: var(--red); }
 // ================================================================
 // CONSTANTS & DEFAULT CONFIG
 // ================================================================
-const APP_BASE_VERSION = '3.0';  // MAJOR.MINOR — increment manually
+const APP_BASE_VERSION = '3.1';  // MAJOR.MINOR — increment manually
 const APP_VERSION = APP_BASE_VERSION;
 const STORAGE_KEY = 'labwip_data';          // browser cache, current format
 const LEGACY_STORAGE_KEY = 'wipflow_data';  // pre-3.0 key, migrated on first run
@@ -2619,6 +2649,13 @@ const LEGACY_STORAGE_KEY = 'wipflow_data';  // pre-3.0 key, migrated on first ru
 const DATA_FILE_NAME = 'wipflow-data.json';
 /** Remembers the revision handed to the file system, so a lagging file is detectable. */
 const LAST_FILE_REV_KEY = 'wipflow_last_file_rev';
+/** The nominated data folder — a per-machine layout choice, not part of the payload. */
+const DATA_FOLDER_KEY = 'wipflow_data_folder';
+/** How many browser-renamed copies "name(N).json" to search for. */
+const DATA_SCAN_LIMIT = 30;
+const SCAN_BATCH = 10;
+/** Numbered backups kept beside the data file where the app may write files. */
+const BAK_LIMIT = 9;
 const IDB_NAME = 'wipflow';
 const IDB_VERSION = 2;
 const BACKUP_LIMIT = 12;   // rolling restore points kept in the browser
@@ -2626,6 +2663,64 @@ const BACKUP_LIMIT = 12;   // rolling restore points kept in the browser
 /** True when the browser can write a real file from a page (Chrome/Edge). */
 const FS_FILE_API = typeof window.showSaveFilePicker === 'function' ||
                     typeof window.showOpenFilePicker === 'function';
+/** True when the browser can grant a whole folder (needed for the .bak history). */
+const DIR_API = typeof window.showDirectoryPicker === 'function';
+
+/**
+ * Turn a folder path the user typed into a URL prefix usable from a file:// page.
+ * Accepts "C:/Data/WIPflow", "C:\Data\WIPflow", or an already-formed file:// URL.
+ */
+function toFileUrl(folder) {
+  let v = String(folder || '').trim().replace(/\\/g, '/').replace(/\/+$/, '');
+  if (!v) return '';
+  if (/^file:\/\//i.test(v)) return v;
+  if (/^[a-z]:\//i.test(v)) return 'file:///' + v;   // Windows drive
+  if (v.startsWith('/')) return 'file://' + v;      // POSIX absolute
+  return v;                                          // treat as relative
+}
+
+/**
+ * Whether this page can read local files at all.
+ *
+ * THIS IS THE FACT THAT SHAPES THE WHOLE STORAGE DESIGN.
+ * Measured on a default profile of each engine, for a file sitting beside the page:
+ *
+ *   Firefox   every local file read is BLOCKED
+ *             (security.fileuri.strict_origin_policy defaults to true; only the
+ *             page's own document can be read)
+ *   Chromium  file:// XHR is refused outright
+ *   WebKit    file:// XHR is refused outright
+ *
+ * So outside Chrome/Edge there is no automatic file store: a saved data file is
+ * a one-way export that the user must load back explicitly, and the browser's
+ * own storage is the working copy.
+ */
+let _localReadProbe = null;
+async function canReadLocalFiles() {
+  if (_localReadProbe !== null) return _localReadProbe;
+  if (!/^file:/i.test(location.protocol)) { _localReadProbe = true; return true; }
+  // Reading the page's own document succeeds almost everywhere, so it proves
+  // nothing. Try a *different* file: only a real local-file read can succeed.
+  const dir = location.href.split('?')[0].split('#')[0].replace(/[^/]*$/, '');
+  const candidates = ['wipflow-data.json', 'wipflow-data(1).json', 'wipflow-data.txt'];
+  _localReadProbe = (async () => {
+    for (const name of candidates) {
+      const text = await new Promise(resolve => {
+        try {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', dir + name, true);
+          xhr.onload = () => resolve((xhr.status === 200 || xhr.status === 0) ? (xhr.responseText || '') : null);
+          xhr.onerror = () => resolve(null);
+          xhr.send();
+        } catch (e) { resolve(null); }
+      });
+      if (text) return true;
+    }
+    return false;
+  })();
+  return _localReadProbe;
+}
+
 
 /** Default settings / seed data */
 const DEFAULT_SETTINGS = {
@@ -2984,39 +3079,40 @@ const IDB = {
 // ================================================================
 // DATA FILE — the authoritative store: a real file the user owns
 //
-//   Chromium / Edge : File System Access API + a persisted file handle
-//                     => genuinely automatic, silent autosave
-//   Firefox / Safari: no API to write files from a page, so the file is
-//                     written by a download with a fixed name (which the
-//                     browser overwrites in place) and read back on startup
-//                     with fetch(). The read side is what makes this work.
+//   Chromium / Edge : File System Access API with a persisted DIRECTORY
+//                     handle, so saving is silent, .bak1…bak9 history is kept
+//                     beside the data file, and ONE handle serves every copy of
+//                     WIPflow.html on this machine (Chromium shares a single
+//                     file:// origin).
+//   Firefox / Safari: a page cannot write files, so the data goes out as a
+//                     download and the browser names the file itself, adding
+//                     "(1)", "(2)" to repeats. Reads therefore never trust the
+//                     filename: they scan the data folder and take the copy with
+//                     the highest revision.
 // ================================================================
 const DataFile = {
   provider: 'none',      // none | fs | download
-  handle: null,
-  name: null,
+  dir: null,             // directory handle (fs mode)
+  name: DATA_FILE_NAME,
   lastWrite: null,
   _cachedRaw: null,      // last content read from / written to the file
-  _lastHash: null,
+  _needsPermission: false,
 
-  get writable() { return this.provider === 'fs' && !!this.handle; },
+  get writable() { return this.provider === 'fs' && !!this.dir; },
   get diskBacked() { return this.provider === 'fs' || this.provider === 'download'; },
   /** True when saving needs no browser download (i.e. it can be silent). */
-  get silent() { return this.provider === 'fs' && !!this.handle; },
+  get silent() { return this.writable; },
 
-  /** Firefox/Safari: write the file on save AND when the page closes. */
-  downloadAuto: false,
-
-  /** Reconnect a previously authorised data file (Chromium/Edge, silent). */
+  /** Reconnect a previously authorised data folder (Chromium/Edge, silent). */
   async init() {
-    if (!FS_FILE_API) return false;
-    const rec = await IDB.get('kv', 'dataFile');
-    if (!rec || !rec.handle) return false;
-    this.handle = rec.handle;
-    this.name   = rec.name || (rec.handle.name || DATA_FILE_NAME);
+    if (!DIR_API) return false;
+    const rec = await IDB.get('kv', 'dataDir');
+    if (!rec || !rec.dir) return false;
+    this.dir = rec.dir;
+    this.name = rec.name || DATA_FILE_NAME;
     this.provider = 'fs';
     try {
-      if ((await this.handle.queryPermission({ mode: 'readwrite' })) === 'granted') return true;
+      if ((await this.dir.queryPermission({ mode: 'readwrite' })) === 'granted') return true;
     } catch (e) { /* fall through */ }
     // Permission lapsed (browser restart). Ask again on the first user gesture.
     this._needsPermission = true;
@@ -3024,95 +3120,191 @@ const DataFile = {
   },
 
   /**
-   * Ask the user for a data file. Must be called from a user gesture.
-   * mode 'new'  -> create (or overwrite) a data file
-   * mode 'open' -> attach an existing data file
+   * Nominate the folder that holds the data file. Must be called from a user
+   * gesture. One folder serves every copy of the app on this machine.
    */
-  async choose(mode = 'open') {
-    if (!FS_FILE_API) {
-      this.provider = this.provider === 'none' ? 'download' : this.provider;
+  async choose() {
+    if (!DIR_API) {
+      if (this.provider === 'none') this.provider = 'download';
       return false;
     }
-    if (!this._sameGesture) { this._sameGesture = true; setTimeout(() => { this._sameGesture = false; }, 1000); }
-    let handle = null;
+    let dir = null;
     try {
-      if (mode === 'new') {
-        handle = await window.showSaveFilePicker({
-          id: 'wipflow-data',
-          suggestedName: this.name || DATA_FILE_NAME,
-          types: [{ description: 'WIP Flow data', accept: { 'application/json': ['.json'] } }],
-        });
-      } else {
-        [handle] = await window.showOpenFilePicker({
-          id: 'wipflow-data',
-          multiple: false,
-          types: [{ description: 'WIP Flow data', accept: { 'application/json': ['.json'] } }],
-        });
-      }
+      dir = await window.showDirectoryPicker({ id: 'wipflow-data', mode: 'readwrite' });
     } catch (e) {
       if (e.name !== 'AbortError') {
-        console.warn('Data file picker failed:', e);
-        Toast.show('Could not open the file picker: ' + e.name, 'error');
+        console.warn('Folder picker failed:', e);
+        Toast.show('Could not open the folder picker: ' + e.name, 'error');
       }
       return false;
     }
-    if (!handle) return false;
+    if (!dir) return false;
     try {
-      if ((await handle.requestPermission({ mode: 'readwrite' })) !== 'granted') return false;
+      if ((await dir.requestPermission({ mode: 'readwrite' })) !== 'granted') return false;
     } catch (e) { /* requestPermission may be absent; try writing anyway */ }
-    this.handle = handle;
-    this.name   = handle.name;
+    this.dir = dir;
+    if (!this.name) this.name = DATA_FILE_NAME;
     this.provider = 'fs';
     this._needsPermission = false;
-    await IDB.set('kv', { handle, name: handle.name }, 'dataFile');
+    await IDB.set('kv', { dir, name: this.name }, 'dataDir');
     return true;
   },
 
   setDownloadMode(name) {
-    this.handle = null;
+    this.dir = null;
     this.name = name || DATA_FILE_NAME;
     this.provider = 'download';
   },
 
   async disconnect() {
-    await IDB.del('kv', 'dataFile');
-    this.handle = null;
+    await IDB.del('kv', 'dataDir');
+    this.dir = null;
     this.provider = 'none';
-    this.name = null;
+    this.name = DATA_FILE_NAME;
   },
 
-  /** Read the data file. Returns { json, raw } or null. Never throws. */
+  /** Does the nominated folder already hold a data file? */
+  async hasDataFile() {
+    if (!this.dir) return false;
+    return (await this._readNamed(this.name)) != null;
+  },
+
+  /**
+   * Read the data file. Returns { json, raw, source } or null. Never throws.
+   */
   async read() {
-    const raw = await this._readRaw();
-    if (raw == null) return null;
-    try { return { json: JSON.parse(raw), raw }; } catch (e) { return { json: null, raw }; }
-  },
-
-  /** Read the raw text of the data file via whichever route applies. */
-  async _readRaw() {
-    if (this.provider === 'fs' && this.handle) {
-      try {
-        const file = await this.handle.getFile();
-        const text = await file.text();
-        this.lastModified = file.lastModified;
-        this._cachedRaw = text;
-        return text;
-      } catch (e) { console.warn('Data file read failed:', e); return null; }
+    if (this.writable) {
+      const raw = await this._readNamed(this.name);
+      if (raw == null) return null;
+      this._cachedRaw = raw;
+      try { return { json: JSON.parse(raw), raw, source: this.name }; }
+      catch (e) { return { json: null, raw, source: this.name }; }
     }
-    // Firefox / Safari: read a sibling file from the app's own directory. This
-    // is what makes the sidecar file portable without any file picker.
-    // XHR is used rather than fetch because a missing file here is normal and
-    // fetch would raise an unhandled rejection in the console for it.
-    const name = this.name || DATA_FILE_NAME;
-    const text = await this._readSibling(name);
-    if (text == null) return null;
-    this.name = name;
-    if (this.provider !== 'fs') this.provider = 'download';
-    this._cachedRaw = text;
-    return text;
+    // The download route can only read files if the browser permits file://
+    // reads at all. Firefox blocks them by default (see canReadLocalFiles).
+    if (!(await canReadLocalFiles())) return null;
+    return this._readNewestCandidate();
   },
 
-  /** Read a sibling file by name. Resolves null when it is absent or blocked. */
+  /**
+   * Can this browser read a local file from a file:// page?
+   *
+   * Firefox ships security.fileuri.strict_origin_policy = true, which blocks
+   * even a file sitting beside the page. Chromium and WebKit refuse file:// XHR
+   * outright. So this is normally false, and the app must not pretend it can
+   * read data files — it has to say so instead of appearing to fail.
+   */
+  _localReadsOk: null,
+  async canRead() {
+    if (this.writable) return true;
+    if (this._localReadsOk === null) this._localReadsOk = await canReadLocalFiles();
+    return this._localReadsOk;
+  },
+
+  // ---------- fs mode helpers ----------
+
+  async _readNamed(name) {
+    try {
+      const fh = await this.dir.getFileHandle(name, { create: false });
+      return await (await fh.getFile()).text();
+    } catch (e) { return null; }
+  },
+
+  async _writeNamed(name, text) {
+    const fh = await this.dir.getFileHandle(name, { create: true });
+    const w  = await fh.createWritable({ keepExistingData: false });
+    await w.write(text);
+    await w.close();
+  },
+
+  // ---------- download mode helpers ----------
+
+  /** Folders to search, most specific first, as URL prefixes. */
+  _searchFolders() {
+    const out = [];
+    const configured = StorageManager.dataFolder();
+    // The configured folder may be an absolute path or one relative to the app.
+    // Either way it needs a trailing separator before a filename is appended.
+    if (configured) out.push(toFileUrl(configured).replace(/\/+$/, '') + '/');
+    out.push('');                       // the app's own directory (relative)
+    return out;
+  },
+
+  /** Every plausible name for the data file. */
+  _candidateNames() {
+    const names = [DATA_FILE_NAME];
+    // Browsers append "(1)", "(2)"… to repeated downloads.
+    const stem = DATA_FILE_NAME.replace(/\.json$/, '');
+    for (let i = 1; i <= DATA_SCAN_LIMIT; i++) names.push(`${stem}(${i}).json`);
+    return names;
+  },
+
+  /**
+   * Fetch every candidate, parse it, and return the highest-revision payload.
+   * Deciding by revision is what makes browser renaming harmless: a stale
+   * canonical file can never win over a newer numbered copy.
+   */
+  async _readNewestCandidate() {
+    const configured = StorageManager.dataFolder();
+    let best = null;
+    for (const folder of this._searchFolders()) {
+      const prefix = folder ? folder.replace(/\/+$/, '') + '/' : '';
+      for (const hit of await this._scan(prefix)) {
+        let parsed = null;
+        try { parsed = JSON.parse(hit.text); } catch (e) { continue; }
+        if (!parsed || typeof parsed !== 'object') continue;
+        const rev = StorageManager._revOf(parsed);
+        if (!best || rev > best.rev) best = { rev, json: parsed, raw: hit.text, name: hit.name, folder };
+      }
+      // A configured folder is authoritative: do not let the app's own folder
+      // shadow it with an unrelated project.
+      if (configured && folder === configured) break;
+    }
+    if (!best) return null;
+    this.name = best.name;
+    if (this.provider !== 'fs') this.provider = 'download';
+    this._cachedRaw = best.raw;
+    this._cachedFolder = best.folder;
+    return { json: best.json, raw: best.raw, source: best.name };
+  },
+
+  /** Read every existing candidate in a folder, in small parallel batches. */
+  async _scan(prefix) {
+    const names = this._candidateNames();
+    const found = [];
+    for (let i = 0; i < names.length; i += SCAN_BATCH) {
+      const slice = names.slice(i, i + SCAN_BATCH);
+      const texts = await Promise.all(slice.map(n => this._readSibling(prefix + n)));
+      texts.forEach((text, k) => { if (text != null) found.push({ name: slice[k], text }); });
+    }
+    return found;
+  },
+
+  /**
+   * Every data file visible in the search folders, newest first. Used by the
+   * Data & Backup panel so the user can see and choose what exists on disk.
+   */
+  async listCandidates() {
+    const out = [];
+    for (const folder of this._searchFolders()) {
+      const prefix = folder ? folder.replace(/\/+$/, '') + '/' : '';
+      for (const hit of await this._scan(prefix)) {
+        let parsed = null;
+        try { parsed = JSON.parse(hit.text); } catch (e) { continue; }
+        out.push({
+          name: hit.name,
+          folder: folder || '(this app\u2019s folder)',
+          revision: StorageManager._revOf(parsed),
+          tasks: (parsed.tasks || []).length,
+          savedAt: parsed.savedAt || null,
+          raw: hit.text,
+        });
+      }
+    }
+    return out.sort((a, b) => b.revision - a.revision);
+  },
+
+  /** Read a file by name, relative to the page. Null when absent or blocked. */
   _readSibling(name) {
     return new Promise(resolve => {
       try {
@@ -3130,45 +3322,41 @@ const DataFile = {
     });
   },
 
-  /** True when the file changed on disk since we last read or wrote it. */
+  // ---------- status ----------
+
+  /** True when the data file changed on disk since we last read or wrote it. */
   async changedExternally() {
-    if (this.provider !== 'fs' || !this.handle || this._cachedRaw == null) return false;
-    try {
-      const text = await (await this.handle.getFile()).text();
-      return text !== this._cachedRaw;
-    } catch (e) { return false; }
+    if (!this.writable || this._cachedRaw == null) return false;
+    const text = await this._readNamed(this.name);
+    return text != null && text !== this._cachedRaw;
   },
 
+  // ---------- writing ----------
+
   /**
-   * Write the payload. Returns { ok, via }.
-   *   via = 'fs'       written silently into the real file
-   *   via = 'download' handed to the browser as a fixed-name download
+   * Write the payload. Returns { ok, via, reason, canonical }.
+   *   canonical = true  the payload became wipflow-data.json itself
+   *   canonical = false the browser chose the name (download mode)
    */
   async write(json) {
-    if (this.provider === 'fs' && this.handle) {
+    if (this.writable) {
       try {
-        if ((await this.handle.queryPermission({ mode: 'readwrite' })) !== 'granted') {
-          const perm = await this.handle.requestPermission({ mode: 'readwrite' });
+        if ((await this.dir.queryPermission({ mode: 'readwrite' })) !== 'granted') {
+          const perm = await this.dir.requestPermission({ mode: 'readwrite' });
           if (perm !== 'granted') return { ok: false, via: 'fs', reason: 'permission' };
         }
-        const w = await this.handle.createWritable({ keepExistingData: false });
-        await w.write(json);
-        await w.close();
+        await this._rotateBackups();
+        await this._writeNamed(this.name || DATA_FILE_NAME, json);
         this._cachedRaw = json;
         this.lastWrite = Date.now();
         this._needsPermission = false;
-        return { ok: true, via: 'fs' };
+        return { ok: true, via: 'fs', canonical: true };
       } catch (e) {
         console.warn('Data file write failed:', e);
         return { ok: false, via: 'fs', reason: e.name };
       }
     }
 
-    // Firefox / Safari: a download with a fixed name. Browsers here cannot
-    // overwrite silently, so the app keeps the browser copy authoritative and
-    // treats the file as the portable snapshot. Stale reads are detected
-    // separately (see checkFileStaleness) so a lagging file can never be
-    // mistaken for the current data.
     if (this.provider === 'download') {
       try {
         const blob = new Blob([json], { type: 'application/json' });
@@ -3183,14 +3371,55 @@ const DataFile = {
         setTimeout(() => URL.revokeObjectURL(url), 4000);
         this._cachedRaw = json;
         this.lastWrite = Date.now();
-        return { ok: true, via: 'download' };
+        return { ok: true, via: 'download', canonical: false };
       } catch (e) {
         return { ok: false, via: 'download', reason: String(e) };
       }
     }
     return { ok: false, via: 'none' };
   },
+
+  /**
+   * Shift wipflow-data.json.bak(N) -> .bak(N+1), then copy the live data file
+   * into .bak1, so the canonical name always holds the newest data and history
+   * sits in numbered files beside it.
+   *
+   * The revision is deliberately NOT part of these names: if it were, the newest
+   * file would be "the one with the highest number" rather than the canonical
+   * name, which is exactly what we are avoiding. Copies are also the most
+   * portable form - any .bak file can be renamed back over the original.
+   */
+  async _rotateBackups() {
+    if (!this.dir) return;
+    const base = (this.name || DATA_FILE_NAME) + '.bak';
+    try {
+      await this.dir.removeEntry(base + BAK_LIMIT).catch(() => {});
+      for (let i = BAK_LIMIT - 1; i >= 1; i--) {
+        const text = await this._readNamed(base + i);
+        if (text != null) await this._writeNamed(base + (i + 1), text);
+      }
+      const live = await this._readNamed(this.name || DATA_FILE_NAME);
+      if (live != null) await this._writeNamed(base + '1', live);
+    } catch (e) {
+      console.warn('Backup rotation skipped:', e);
+    }
+  },
+
+  /** Export the in-browser restore points as .bakN files where the app can write. */
+  async exportBackupsAsBak() {
+    if (!this.writable) return 0;
+    const list = await StorageManager.listBackups();   // newest first
+    const base = (this.name || DATA_FILE_NAME) + '.bak';
+    let n = 0;
+    // Oldest first, so .bak1 ends up the most recent exported revision.
+    for (const rec of list.slice(0, BAK_LIMIT).reverse()) {
+      n++;
+      await this._writeNamed(base + n, rec.json);
+    }
+    return n;
+  },
 };
+
 
 // ================================================================
 // STORAGE MANAGER — startup reconciliation, writes, restore points
@@ -3204,6 +3433,38 @@ const StorageManager = {
   _legacyUsed: false,
   _downloadModeAsked: false,
   _saveQueue: Promise.resolve(),
+  _readSource: null,    // which file the data came from
+
+  // ---------- the nominated data folder ----------
+
+  /**
+   * The folder the user nominated as the home of the data file. Stored in the
+   * browser (not in the payload) because it is a property of this machine's
+   * layout, not of the project. Firefox can read an absolute file:// path, so
+   * this is what lets several copies of WIPflow.html share one data file.
+   */
+  dataFolder() {
+    try { return localStorage.getItem(DATA_FOLDER_KEY) || ''; } catch (e) { return ''; }
+  },
+
+  setDataFolder(folder) {
+    let v = (folder || '').trim();
+    if (v) {
+      v = v.replace(/\\/g, '/').replace(/\/+$/, '');
+      // Accept a pasted full file path and keep only the folder it lives in.
+      if (/\.json$/i.test(v)) v = v.replace(/\/[^/]*$/, '');
+    }
+    try {
+      if (v) localStorage.setItem(DATA_FOLDER_KEY, v);
+      else localStorage.removeItem(DATA_FOLDER_KEY);
+    } catch (e) {}
+    return v;
+  },
+
+  /** The folder actually used, for display. */
+  activeFolder() {
+    return this.dataFolder() || '(this app\u2019s folder)';
+  },
 
   // ---------- startup ----------
 
@@ -3218,10 +3479,15 @@ const StorageManager = {
     // 1. Reconnect a data file (Chromium/Edge) — silent when permitted.
     await DataFile.init();
 
+    // Establish whether this browser permits local file reads at all. The answer
+    // shapes what the UI may honestly claim, so find it out before anything else.
+    await DataFile.canRead();
+
     // 2. Read the data file, whichever route applies.
     let fileJson = null, fileBroken = false;
     const read = await DataFile.read();
     if (read) {
+      this._readSource = read.source || null;
       if (read.json) fileJson = read.json;
       else fileBroken = true;
     }
@@ -3299,28 +3565,45 @@ const StorageManager = {
   },
 
   /**
-   * Browsers without a file-write API accumulate "name(1).json" copies instead
-   * of overwriting, so the file the app reads back can lag behind reality.
-   * Detect that explicitly: the last revision we handed to the file system is
-   * remembered, so a lagging read is always visible rather than silent.
+   * Where the data came from, and whether an older copy is shadowing it.
+   *
+   * The read path now takes the HIGHEST revision it can find, so the old
+   * "canonical file is stale" trap is gone. What can still happen is a folder
+   * holding several copies (browsers rename repeated downloads), so surface
+   * which file is live and how many others exist, rather than assuming.
    */
   _checkFileStaleness() {
-    if (DataFile.provider !== 'download') return;
+    if (DataFile.provider === 'fs') return;
     let lastWritten = 0;
     try { lastWritten = Number(localStorage.getItem(LAST_FILE_REV_KEY)) || 0; } catch (e) {}
     const onDisk = this._fileRev;
     const current = AppState.settings.revision || 0;
-    if (lastWritten > onDisk) {
-      this._staleBy = lastWritten - onDisk;
-      Toast.show(
-        `The data file lags ${this._staleBy} save(s) behind. Your work is safe — it is in the browser. ` +
-        `To make the file track every change, move ${DataFile.name || DATA_FILE_NAME} next to WIPflow.html and let it overwrite.`,
-        'info', 9000
-      );
-      Storage._setIndicator(false, 'stale');
-    } else if (onDisk > 0 && onDisk < current) {
-      this._staleBy = current - onDisk;
-    }
+
+    // Checked asynchronously: on browsers that block local file reads there is
+    // nothing to compare against, and saying "the file is lagging" would be
+    // misleading — the file is simply write-only there.
+    DataFile.canRead().then(canRead => {
+      if (!canRead) {
+        this._staleBy = 0;
+        if (DataFile.provider === 'download' && lastWritten > 0) {
+          Storage._setIndicator(true, 'output');
+        }
+        return;
+      }
+      // Written to disk but the newest readable copy is behind: the write went
+      // somewhere the app cannot see (usually a different download folder).
+      if (lastWritten > onDisk && lastWritten > current) {
+        this._staleBy = lastWritten - onDisk;
+        Toast.show(
+          `WIP Flow wrote revision ${lastWritten} but the newest file it can read is revision ${onDisk}. ` +
+          `Check that the browser\u2019s download folder is the same as the data folder shown in Data & Backup.`,
+          'info', 10000
+        );
+        Storage._setIndicator(false, 'stale');
+        return;
+      }
+      if (onDisk > 0 && onDisk < current) this._staleBy = current - onDisk;
+    }).catch(() => {});
   },
 
   /** Serialised payload for persistence. */
@@ -3409,9 +3692,9 @@ const StorageManager = {
     if (hint) {
       hint.innerHTML = legacyJson
         ? `Found an older in-browser copy (${(legacyJson.tasks || []).length} tasks). It is already loaded — choose how to keep it.`
-        : (FS_FILE_API
-            ? 'Chrome/Edge: <strong>Connect a data file</strong> gives you silent autosave to a real file.<br>Firefox/Safari: saving writes a <code>wipflow-data.json</code> download into your Downloads folder, which WIP Flow reads back automatically at startup.'
-            : 'Saving writes a <code>wipflow-data.json</code> download into your Downloads folder, which WIP Flow reads back automatically at startup.<br>Keep <code>wipflow-data.json</code> next to <code>WIPflow.html</code> and opening the app restores your work with no clicks.');
+        : (DIR_API
+            ? 'Chrome/Edge: <strong>Connect a data folder</strong> gives you silent autosave to <code>wipflow-data.json</code>, with <code>.bak1\u2026.bak9</code> history beside it. The same folder can serve every copy of <code>WIPflow.html</code> on this computer.'
+            : 'This browser cannot write files, so saving downloads <code>wipflow-data.json</code>. WIP Flow reads back the copy with the highest revision, and a <strong>data folder</strong> you nominate lets every copy of <code>WIPflow.html</code> share one file.');
     }
 
     const done = () => { overlay.style.display = 'none'; };
@@ -3432,7 +3715,7 @@ const StorageManager = {
     };
 
     document.getElementById('setup-attach').onclick = async () => {
-      const ok = await StorageManager.connectDataFile('open');
+      const ok = await StorageManager.connectDataFolder();
       if (ok) { done(); App.refresh(); }
     };
 
@@ -3526,8 +3809,9 @@ const StorageManager = {
    */
   async _doSave(json, opts = {}) {
     let ok = false, via = 'none', reason = null;
+    const wantFile = DataFile.provider !== 'download' || opts.force;
 
-    if (DataFile.provider !== 'download' || opts.force) {
+    if (wantFile) {
       const res = await DataFile.write(json);
       if (res.ok) {
         ok = true; via = res.via;
@@ -3550,7 +3834,50 @@ const StorageManager = {
     this._recordBackup(JSON.parse(json));
     this._dirty = false;
     if (ok) this._fileRev = AppState.settings.revision || this._fileRev;
+
+    // Where the browser names the file itself, confirm the app can still SEE
+    // what it just wrote. If it cannot, the download folder is not the data
+    // folder, and saying so now is far better than discovering it later.
+    if (ok && via === 'download') this.verifyWriteLanded();
     return { ok, via, reason };
+  },
+
+  /**
+   * After a download write, re-scan the data folder. The write succeeded as far
+   * as the browser is concerned, but the app can only read files in its own
+   * folder or the nominated one — so a mismatch has to be surfaced, not assumed.
+   */
+  verifyWriteLanded() {
+    clearTimeout(this._verifyTimer);
+    this._verifyTimer = setTimeout(async () => {
+      try {
+        const written = AppState.settings.revision || 0;
+        // Where local reads are blocked the file is a one-way export: there is
+        // nothing to verify and no honest way to call it "unsaved".
+        if (!(await DataFile.canRead())) {
+          this._staleBy = 0;
+          Storage._setIndicator(true, 'output');
+          return;
+        }
+        const files = await DataFile.listCandidates();
+        const best = files[0];
+        if (best && best.revision >= written) {
+          this._fileRev = best.revision;
+          this._staleBy = 0;
+          this._readSource = best.name;
+          Storage._setIndicator(true, 'saved');
+          return;
+        }
+        this._staleBy = Math.max(1, written - (best ? best.revision : 0));
+        Storage._setIndicator(false, 'stale');
+        Toast.show(
+          `Saved, but the newest data file WIP Flow can read is revision ${best ? best.revision : 0}, not ${written}. ` +
+          `The browser is downloading somewhere other than the data folder. ` +
+          `Set the same folder in the browser\u2019s download settings, or point the data folder at the download location.`,
+          'error', 12000
+        );
+      } catch (e) { /* verification is best-effort */ }
+    }, 2500);
   },
 
   /**
@@ -3591,6 +3918,8 @@ const StorageManager = {
   diskBacked() { return DataFile.diskBacked; },
   writable()   { return DataFile.writable; },
   fileRevision() { return this._fileRev; },
+  readSource() { return this._readSource; },
+  localReadsOk() { return DataFile._localReadsOk; },
   staleBy()    { return this._staleBy || 0; },
   needsPermission() { return !!DataFile._needsPermission; },
 
@@ -3637,57 +3966,64 @@ const StorageManager = {
 
   // ---------- connect / disconnect ----------
 
-  async connectDataFile(mode = 'open') {
-    const ok = await DataFile.choose(mode);
-    if (ok) {
-      // An existing file was chosen: read it and adopt whatever is newer,
-      // asking first rather than assuming.
-      const read = await DataFile.read();
-      const fileJson = read && read.json ? read.json : null;
-      const fileRev  = fileJson ? this._revOf(fileJson) : 0;
-      const curRev   = AppState.settings.revision || 0;
-
-      if (fileJson && fileRev < curRev) {
-        this._showRecovery([
-          { label: 'Keep the version currently in WIP Flow', desc: `revision ${curRev} · ${AppState.tasks.length} tasks`, primary: true,
-            pick: () => { this._dirty = true; Storage.saveNow({ silent: false }); App.refresh(); } },
-          { label: 'Load the connected data file instead', desc: `revision ${fileRev} · ${(fileJson.tasks || []).length} tasks`,
-            pick: () => { this._adopt(fileJson); this._dirty = true; App.refresh(); } },
-        ], 'The data file you connected is older than the data currently open.');
-      } else if (fileJson) {
-        this._adopt(fileJson);
-        App.refresh();
-        Toast.show(`Connected “${DataFile.name}” — ${AppState.tasks.length} tasks loaded`, 'success');
-      } else {
-        this._dirty = true;
-        Storage.saveNow({ silent: false });
+  /** Nominate a data folder (Chrome/Edge) or explain the download route. */
+  async connectDataFolder() {
+    const ok = await DataFile.choose();
+    if (!ok) {
+      if (!DIR_API) {
+        this._enableDownloadMode(true);
+        Settings.render();
+        return DataFile.provider === 'download';
       }
-      Settings.render();
-      return true;
+      Toast.show('No folder selected.', 'info');
+      return false;
     }
 
-    // No File System Access API: explain and offer download mode.
-    if (!FS_FILE_API) {
-      this._enableDownloadMode(true);
-      Settings.render();
-      return DataFile.provider === 'download';
+    // The chosen folder may already hold data. Read it and adopt whatever is
+    // newer, asking the user rather than assuming.
+    const read = await DataFile.read();
+    const fileJson = read && read.json ? read.json : null;
+    const fileRev  = fileJson ? this._revOf(fileJson) : 0;
+    const curRev   = AppState.settings.revision || 0;
+
+    if (fileJson && fileRev < curRev) {
+      this._showRecovery([
+        { label: 'Keep the version currently in WIP Flow',
+          desc: `revision ${curRev} · ${AppState.tasks.length} tasks`, primary: true,
+          pick: () => { this._dirty = true; Storage.saveNow({ silent: false }); App.refresh(); } },
+        { label: 'Load the data file in this folder instead',
+          desc: `revision ${fileRev} · ${(fileJson.tasks || []).length} tasks`,
+          pick: () => { this._adopt(fileJson); this._dirty = true; App.refresh(); } },
+      ], 'The folder you chose holds an older data file than the data currently open.');
+    } else if (fileJson) {
+      this._adopt(fileJson);
+      this._fileRev = fileRev;
+      App.refresh();
+      Toast.show(`Connected \u201C${DataFile.name}\u201D \u2014 ${AppState.tasks.length} tasks loaded`, 'success');
+    } else {
+      this._dirty = true;
+      await Storage.saveNow({ silent: false });
+      Toast.show('Folder connected \u2014 ' + DataFile.name + ' will be kept there with .bak history', 'success', 5000);
     }
-    Toast.show('No data file selected.', 'info');
-    return false;
+    Settings.render();
+    return true;
   },
 
+  /** Where the file goes when the browser must download it instead. */
   _enableDownloadMode(ask) {
     if (ask && !this._downloadModeAsked) {
       this._downloadModeAsked = true;
+      const folder = this.dataFolder();
       const proceed = confirm(
-        'Keep your data in a file called "' + DATA_FILE_NAME + '"?\n\n' +
-        'This browser does not let a page write files directly, so WIP Flow saves by downloading ' +
-        'that file. Your work is always current in the browser; the file is written when you press ' +
-        'Save and when you close the tab.\n\n' +
-        'To have your work load automatically next time, put ' + DATA_FILE_NAME + ' in the same ' +
-        'folder as WIPflow.html. (Browsers add (1), (2)… to repeated downloads; keep the newest ' +
-        'copy beside the app.)\n\n' +
-        'Note: for fully automatic saving, Chrome or Edge is recommended.\n\n' +
+        'Store your data as a downloadable file?\n\n' +
+        'This browser does not let a page write files, so WIP Flow saves by downloading ' +
+        DATA_FILE_NAME + '. The browser chooses the final name and adds (1), (2)\u2026 when the ' +
+        'name already exists.\n\n' +
+        'WIP Flow always loads the copy with the highest revision, so a numbered copy is never ' +
+        'mistaken for an older one.\n\n' +
+        (folder
+          ? 'Data folder: ' + folder + '\nMake sure the browser downloads there too.\n\n'
+          : 'Tip: set a data folder below so every copy of WIPflow.html shares the same file.\n\n') +
         'Turn on file storage now?'
       );
       if (!proceed) return false;
@@ -3696,6 +4032,14 @@ const StorageManager = {
     this._dirty = true;
     Storage.saveNow({ silent: false });
     return true;
+  },
+
+  /** The folder this app is running from, as a file:// path. */
+  _appFolderPath() {
+    try {
+      const href = decodeURIComponent(location.href.split('?')[0].split('#')[0]);
+      return toFileUrl(href.replace(/\/[^/]*$/, ''));
+    } catch (e) { return ''; }
   },
 
   async disconnectDataFile() {
@@ -3707,7 +4051,7 @@ const StorageManager = {
   // Kept for older call sites / documentation.
   isFileSystemActive() { return DataFile.writable; },
   getFolderName() { return DataFile.name; },
-  connectFolder() { return this.connectDataFile(); },
+  connectFolder() { return this.connectDataFolder(); },
   disconnectFolder() { return this.disconnectDataFile(); },
 };
 
@@ -3802,6 +4146,13 @@ const Storage = {
       text.textContent = 'File lagging — browser copy is current';
       return;
     }
+    if (status === 'output') {
+      dot.className = 'saved';
+      const t0 = StorageManager.lastSaved();
+      const h0 = t0 ? new Date(t0).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }) : '';
+      text.textContent = `Saved ${h0} · in this browser`;
+      return;
+    }
     if (status === 'saving') {
       dot.className = '';
       text.textContent = 'Saving…';
@@ -3829,30 +4180,47 @@ const Storage = {
     const overlay = document.getElementById('data-panel-overlay');
     if (!overlay) return;
     overlay.style.display = 'flex';
+    this._panelOpen = true;
     this._renderPanel();
   },
 
   closePanel() {
     const overlay = document.getElementById('data-panel-overlay');
     if (overlay) overlay.style.display = 'none';
+    this._panelOpen = false;
   },
 
   async _renderPanel() {
     const body = document.getElementById('data-panel-body');
     if (!body) return;
     const backups = await StorageManager.listBackups();
+    const folder = StorageManager.dataFolder();
+    const canRead = await DataFile.canRead();
+
     const status = DataFile.writable
-      ? { cls: 'saved', label: 'Autosaving to your data file', note: 'Every change is written straight into the file you chose. No dialogs, no downloads, nothing to keep in sync.' }
-      : DataFile.provider === 'download'
-        ? { cls: 'warn', label: 'File storage via download', note:
-            `Your work is saved continuously <strong>in this browser</strong>, which is always current. ` +
-            `${escHtml(DataFile.name || DATA_FILE_NAME)} is written to your Downloads folder when you press Save and when you close the tab. ` +
-            `Put that file beside <code>WIPflow.html</code> and it is read back automatically next time — no clicks. ` +
-            `Browsers name repeats <code>name(1).json</code>; keep the newest beside the app. ` +
-            `For truly silent autosave, open the app in Chrome or Edge.` }
-        : { cls: '', label: 'Browser storage only', note:
-            'Your work is saved in this browser and is tied to this exact file location. It will not follow the app to another folder, browser or computer. ' +
-            'Connect a data file to make it portable.' };
+      ? { cls: 'saved', label: 'Autosaving to your data folder',
+          note: `Every change is written straight into <code>${escHtml(DataFile.name || DATA_FILE_NAME)}</code> ` +
+                `in the folder you connected, and the previous version is copied to ` +
+                `<code>${escHtml((DataFile.name || DATA_FILE_NAME) + '.bak1')}</code> ` +
+                `(<code>\u2026.bak${BAK_LIMIT}</code> kept). One folder serves every copy of ` +
+                `<code>WIPflow.html</code> on this computer. This is the fully reliable setup.` }
+      : DataFile.provider === 'download' && canRead
+        ? { cls: 'warn', label: 'Saving to a file, reading it back',
+            note: `Each save downloads <code>${escHtml(DataFile.name || DATA_FILE_NAME)}</code> and WIP Flow reads back the copy with the highest revision. ` +
+                  `This browser names repeated downloads <code>(1)</code>, <code>(2)\u2026</code> itself, so extra files will appear; the newest revision always wins.` }
+        : DataFile.provider === 'download'
+          ? { cls: 'warn', label: 'Browser storage is the working copy',
+              note: `<strong>This browser will not let a page read local files</strong>, so the data file is a one-way export. ` +
+                    `Your work is saved continuously in this browser and is always current; ` +
+                    `<code>${escHtml(DataFile.name || DATA_FILE_NAME)}</code> is written when you press Save and when you close the tab. ` +
+                    `To bring a file back, use <strong>Load data file\u2026</strong> below \u2014 automatic loading is impossible here. ` +
+                    `For a shared data file that every copy reads and writes automatically, use Chrome or Edge.` }
+          : { cls: '', label: 'Browser storage only',
+              note: 'Your work is saved in this browser and is tied to this exact file location. ' +
+                    'It will not follow the app to another folder, browser or computer. ' +
+                    (DIR_API
+                      ? 'Connect a data folder to make it portable and shared between copies of the app.'
+                      : 'Enable file storage to keep a copy you can carry, and use <strong>Load data file\u2026</strong> to bring it back.') };
 
     const rev = AppState.settings.revision || 0;
     const last = StorageManager.lastSaved();
@@ -3867,59 +4235,145 @@ const Storage = {
       </div>
 
       <div class="dp-section">
+        <div class="dp-title">Data file</div>
+        ${DIR_API
+          ? `<div class="dp-note" style="margin-bottom:6px">
+               Nominate one folder to hold <code>${escHtml(DATA_FILE_NAME)}</code>. Every copy of
+               <code>WIPflow.html</code> on this computer can then share that one file, with
+               <code>.bak1\u2026.bak${BAK_LIMIT}</code> history beside it, and saving needs no prompts.
+             </div>
+             <div style="display:flex;gap:8px;flex-wrap:wrap">
+               <button class="btn btn-primary btn-sm" onclick="Storage.doConnect()">\ud83d\udcc2 ${DataFile.writable ? 'Change' : 'Connect'} data folder\u2026</button>
+               ${DataFile.diskBacked ? `<button class="btn btn-ghost btn-sm" onclick="Storage.doDisconnect()">Disconnect</button>` : ''}
+             </div>`
+          : `<div class="dp-note" style="margin-bottom:6px">
+               ${canRead
+                 ? 'This browser can read local files, so a data file beside <code>WIPflow.html</code> loads automatically.'
+                 : `This browser cannot read local files, so <code>${escHtml(DATA_FILE_NAME)}</code> must be loaded by hand. ` +
+                   `It is a portable export, not a live store. Your work always lives in this browser.`}
+             </div>
+             <div style="display:flex;gap:8px;flex-wrap:wrap">
+               <button class="btn btn-primary btn-sm" onclick="Storage.doDownloadMode()">\ud83d\udcc2 ${DataFile.provider === 'download' ? 'Re-enable' : 'Enable'} file saving</button>
+               ${DataFile.diskBacked ? `<button class="btn btn-ghost btn-sm" onclick="Storage.doDisconnect()">Disconnect</button>` : ''}
+             </div>`}
+      </div>
+
+      <div class="dp-section">
         <div class="dp-title">Current data</div>
         <dl class="dp-row" style="margin:0"><dt>Revision</dt><dd>r${rev}</dd></dl>
         <dl class="dp-row" style="margin:0"><dt>Tasks</dt><dd>${AppState.tasks.length}</dd></dl>
-        <dl class="dp-row" style="margin:0"><dt>Data file</dt><dd>${escHtml(DataFile.name || '—')}</dd></dl>
-        <dl class="dp-row" style="margin:0"><dt>File revision</dt><dd>${StorageManager.fileRevision() ? 'r' + StorageManager.fileRevision() : 'not read'}</dd></dl>
-        <dl class="dp-row" style="margin:0"><dt>Last saved</dt><dd>${last ? escHtml(new Date(last).toLocaleTimeString('sv-SE')) : '—'}</dd></dl>
-        <dl class="dp-row" style="margin:0"><dt>Location</dt><dd>${escHtml(location.href)}</dd></dl>
+        <dl class="dp-row" style="margin:0"><dt>Loaded from</dt><dd>${escHtml(StorageManager.readSource() || (DataFile.writable ? DataFile.name : 'this browser'))}</dd></dl>
+        <dl class="dp-row" style="margin:0"><dt>Last saved</dt><dd>${last ? escHtml(new Date(last).toLocaleTimeString('sv-SE')) : '\u2014'}</dd></dl>
+        <dl class="dp-row" style="margin:0"><dt>Local file reads</dt><dd>${canRead ? 'allowed' : 'blocked by this browser'}</dd></dl>
+        <dl class="dp-row" style="margin:0"><dt>This app</dt><dd>${escHtml(location.href)}</dd></dl>
         ${StorageManager.staleBy() ? `<div class="dp-note" style="color:var(--orange)">
-          ⚠ The data file lags ${StorageManager.staleBy()} save(s) behind the browser copy. Nothing is lost — the file is just older.
-          Put the newest <code>${escHtml(DataFile.name || DATA_FILE_NAME)}</code> beside <code>WIPflow.html</code>, or copy your work out with a snapshot below.</div>` : ''}
+          \u26a0 The newest file WIP Flow can see (r${StorageManager.fileRevision()}) is behind the browser copy (r${rev}).
+          Press <strong>Save now</strong> to write a fresh copy.</div>` : ''}
       </div>
+
+      ${canRead || DataFile.writable ? `
+      <div class="dp-section">
+        <div class="dp-title">Files found</div>
+        <div id="dp-files" class="dp-backups"><div class="dp-note">Scanning\u2026</div></div>
+        <div class="dp-note">Every data file WIP Flow can see, newest revision first. The top one is loaded automatically.</div>
+      </div>` : ''}
 
       <div class="dp-section">
         <div class="dp-title">Actions</div>
         <div class="dp-actions">
-          <button class="btn btn-primary btn-sm" onclick="Storage.saveNow()">⬡ Save now</button>
-          ${FS_FILE_API
-            ? `<button class="btn btn-primary btn-sm" onclick="Storage.doConnect('open')">📂 Connect existing data file…</button>
-               <button class="btn btn-secondary btn-sm" onclick="Storage.doConnect('new')">✦ Create new data file…</button>`
-            : `<button class="btn btn-primary btn-sm" onclick="Storage.doDownloadMode()">📂 ${DataFile.provider === 'download' ? 'Re-enable' : 'Enable'} file storage</button>`}
-          ${DataFile.diskBacked ? `<button class="btn btn-ghost btn-sm" onclick="Storage.doDisconnect()">Disconnect</button>` : ''}
-          <button class="btn btn-secondary btn-sm" onclick="Storage.exportFile()">↑ Export .labwip</button>
-          <button class="btn btn-secondary btn-sm" onclick="Storage.triggerImport()">↓ Import .labwip</button>
-          <button class="btn btn-secondary btn-sm" onclick="Storage.exportHTML()">↓ Portable snapshot</button>
+          <button class="btn btn-primary btn-sm" onclick="Storage.saveNow()">\u2b21 Save now</button>
+          <button class="btn btn-secondary btn-sm" onclick="Storage.loadDataFile()">\u2193 Load data file\u2026</button>
+          <button class="btn btn-secondary btn-sm" onclick="Storage.exportFile()">\u2191 Export .labwip</button>
+          <button class="btn btn-secondary btn-sm" onclick="Storage.triggerImport()">\u2193 Import .labwip</button>
+          <button class="btn btn-secondary btn-sm" onclick="Storage.exportHTML()">\u2193 Portable snapshot</button>
+          ${DataFile.writable ? `<button class="btn btn-secondary btn-sm" onclick="Storage.doExportBaks()">\u2193 Write restore points as .bak files</button>` : ''}
         </div>
       </div>
 
       <div class="dp-section">
-        <div class="dp-title">Restore points (${backups.length})</div>
+        <div class="dp-title">Restore points in this browser (${backups.length})</div>
         ${backups.length === 0
-          ? `<div class="dp-note">No restore points yet — they are created automatically with every save.</div>`
+          ? `<div class="dp-note">No restore points yet \u2014 they are created automatically with every save.</div>`
           : `<div class="dp-backups">${backups.map(b => `
               <div class="dp-backup">
-                <span><strong>r${b.rev}</strong> <span class="dp-backup-meta">${b.tasks} tasks · ${escHtml(new Date(b.at).toLocaleString('sv-SE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }))}</span></span>
+                <span><strong>r${b.rev}</strong> <span class="dp-backup-meta">${b.tasks} tasks \u00b7 ${escHtml(new Date(b.at).toLocaleString('sv-SE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }))}</span></span>
                 <button class="btn btn-ghost btn-sm" onclick="Storage.doRestore(${b.rev})">Restore</button>
               </div>`).join('')}</div>`}
-        <div class="dp-note">Restoring loads that version into the app. Nothing is written until you save.</div>
+        <div class="dp-note">Restoring loads that version into the app. Nothing is written until you save. This history is kept in the browser, so it works even where local files cannot be read.</div>
       </div>
     `;
+
+    if (canRead || DataFile.writable) this._fillFileList();
+  },
+  /** List every data file the app can see, newest first. */
+  async _fillFileList() {
+    const el = document.getElementById('dp-files');
+    if (!el) return;
+    try {
+      const files = await DataFile.listCandidates();
+      if (!document.body.contains(el)) return;
+      const activeRev = StorageManager.fileRevision();
+      el.innerHTML = files.length === 0
+        ? `<div class="dp-note">No data files found in the folders above.</div>`
+        : files.map(f => `
+            <div class="dp-backup" ${f.revision === activeRev ? 'style="border-color:var(--accent)"' : ''}>
+              <span>
+                <strong>r${f.revision}</strong>
+                <span class="dp-backup-meta">${escHtml(f.name)} \u00b7 ${f.tasks} tasks${f.savedAt ? ' \u00b7 ' + escHtml(new Date(f.savedAt).toLocaleString('sv-SE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })) : ''}</span>
+                <br><span class="dp-backup-meta">${escHtml(f.folder)}</span>
+              </span>
+              ${f.revision === activeRev ? '<span class="dp-backup-meta">loaded</span>'
+                : `<button class="btn btn-ghost btn-sm" onclick="Storage.doLoadCandidate(${f.revision})">Load</button>`}
+            </div>`).join('');
+    } catch (e) {
+      el.innerHTML = `<div class="dp-note">Could not list files: ${escHtml(e.message)}</div>`;
+    }
   },
 
   openPanelSafe() { this.openPanel(); },
 
   /** Panel action wrappers: run, then re-render the panel. */
-  async doConnect(mode)  { await StorageManager.connectDataFile(mode); await this._renderPanel(); Settings.renderStorageStatus(); },
+  async doConnect()      { await StorageManager.connectDataFolder(); await this._renderPanel(); Settings.renderStorageStatus(); },
   async doDisconnect()   { await StorageManager.disconnectDataFile(); await this._renderPanel(); Settings.renderStorageStatus(); },
+  async doSetFolder() {
+    const input = document.getElementById('dp-folder-input');
+    const v = StorageManager.setDataFolder(input ? input.value : '');
+    Toast.show(v ? 'Data folder set to ' + v : 'Data folder cleared \u2014 using this app\u2019s folder', 'success', 5000);
+    await this._renderPanel();
+    Settings.renderStorageStatus();
+  },
+  async doClearFolder() {
+    StorageManager.setDataFolder('');
+    await this._renderPanel();
+    Settings.renderStorageStatus();
+  },
   async doDownloadMode() {
-    const wasOff = !StorageManager.diskBacked();
-    StorageManager._enableDownloadMode(wasOff);
+    StorageManager._enableDownloadMode(!StorageManager.diskBacked());
     await this._renderPanel();
     Settings.renderStorageStatus();
   },
   async doRestore(rev)   { await StorageManager.restoreBackup(rev); await this._renderPanel(); },
+  async doExportBaks() {
+    const n = await DataFile.exportBackupsAsBak();
+    Toast.show(n ? `Wrote ${n} .bak file(s) into the data folder` : 'Could not write backups \u2014 no write access to the folder', n ? 'success' : 'error', 6000);
+    await this._renderPanel();
+  },
+  async doLoadCandidate(rev) {
+    const files = await DataFile.listCandidates();
+    const hit = files.find(f => f.revision === rev);
+    if (!hit) { Toast.show('That file is no longer available.', 'error'); return; }
+    try {
+      const obj = JSON.parse(hit.raw);
+      StorageManager._adopt(obj);
+      StorageManager._fileRev = StorageManager._revOf(obj);
+      StorageManager._readSource = hit.name;
+      App.refresh();
+      Toast.show(`Loaded ${hit.name} (r${rev}, ${(obj.tasks || []).length} tasks)`, 'success', 5000);
+    } catch (e) {
+      Toast.show('Could not load that file: ' + e.message, 'error');
+    }
+    await this._renderPanel();
+  },
 
   // ---------- exports ----------
 
@@ -4041,6 +4495,58 @@ const Storage = {
 
   triggerImport() {
     document.getElementById('import-file-input').click();
+  },
+
+  /**
+   * Explicitly load a data file. This is the only way to bring a saved
+   * wipflow-data.json back into the app on browsers that block local file
+   * reads, which includes Firefox and Safari by default.
+   */
+  loadDataFile() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.style.display = 'none';
+    input.onchange = () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const obj = JSON.parse(e.target.result);
+          if (!obj || !Array.isArray(obj.tasks)) throw new Error('not a WIP Flow data file');
+          const fileRev = StorageManager._revOf(obj);
+          const curRev  = AppState.settings.revision || 0;
+          const adopt = () => {
+            StorageManager._adopt(obj);
+            StorageManager._fileRev = fileRev;
+            StorageManager._readSource = file.name;
+            StorageManager._staleBy = 0;
+            Storage.markDirty();
+            App.refresh();
+            Toast.show(`Loaded ${file.name} (r${fileRev}, ${obj.tasks.length} tasks)`, 'success', 5000);
+            if (Storage._panelOpen) Storage._renderPanel();
+          };
+          if (fileRev < curRev) {
+            StorageManager._showRecovery([
+              { label: 'Keep what is currently open',
+                desc: `revision ${curRev} \u00b7 ${AppState.tasks.length} tasks`, primary: true,
+                pick: () => { Storage.markDirty(); Toast.show('Kept the current data \u2014 saving it now', 'info'); } },
+              { label: 'Load ' + file.name,
+                desc: `revision ${fileRev} \u00b7 ${obj.tasks.length} tasks`, pick: adopt },
+            ], 'The file you chose is older than the data currently open.');
+          } else {
+            adopt();
+          }
+        } catch (err) {
+          Toast.show('Could not load that file: ' + err.message, 'error', 6000);
+        }
+      };
+      reader.readAsText(file);
+      input.remove();
+    };
+    document.body.appendChild(input);
+    input.click();
   },
 
   handleImport(event) {
@@ -5922,29 +6428,42 @@ const Settings = {
     if (App.currentView === 'kanban')    KanbanView.render();
   },
 
-  _renderStorageStatus() {
+  async _renderStorageStatus() {
     const el = document.getElementById('storage-status-content');
     if (!el) return;
     const writable = StorageManager.writable();
-    const name     = StorageManager.dataFileName();
+    const name     = StorageManager.dataFileName() || DATA_FILE_NAME;
     const last     = StorageManager.lastSaved();
+    // Ask once whether this browser permits local file reads; it decides which
+    // of the three honest descriptions below applies.
+    const canRead  = writable ? true : await DataFile.canRead();
 
     let state, colour, detail;
     if (writable) {
-      state  = 'Connected to your data file';
+      state  = 'Autosaving to your data folder';
       colour = 'var(--green)';
-      detail = `<code>${escHtml(name || DATA_FILE_NAME)}</code> is written automatically on every change — no dialogs. Keep this file with you when you move the app.`;
-    } else if (StorageManager.diskBacked()) {
-      state  = 'File storage via download';
+      detail = `<code>${escHtml(name)}</code> is written on every change, with the previous version copied to <code>${escHtml(name)}.bak1</code> (up to <code>.bak${BAK_LIMIT}</code>). ` +
+               `One folder serves every copy of <code>WIPflow.html</code> on this computer.`;
+    } else if (StorageManager.diskBacked() && canRead) {
+      state  = 'Saving to a file, reading it back';
       colour = 'var(--orange)';
-      detail = `Your work is saved continuously in the browser, which is always current. ` +
-               `<code>${escHtml(name || DATA_FILE_NAME)}</code> is written to your Downloads folder when you press Save and when you close the tab. ` +
-               `Keep that file beside <code>WIPflow.html</code> and it loads automatically next time. ` +
-               `<a href="#" onclick="Storage.openPanel();return false">Details…</a>`;
+      detail = `Each save writes <code>${escHtml(name)}</code> and WIP Flow reads back the highest revision. ` +
+               `This browser names repeated downloads <code>(1)</code>, <code>(2)\u2026</code> itself, so extra files appear; the newest revision always wins. ` +
+               `<a href="#" onclick="Storage.openPanel();return false">Details\u2026</a>`;
+    } else if (StorageManager.diskBacked()) {
+      state  = 'Browser storage is the working copy';
+      colour = 'var(--orange)';
+      detail = `<strong>This browser will not let a page read local files</strong>, so <code>${escHtml(name)}</code> is a one-way export. ` +
+               `Your work is saved continuously in this browser and is always current. ` +
+               `Bring a file back with <strong>Load data file\u2026</strong> in Data &amp; Backup; automatic loading is impossible here. ` +
+               `<a href="#" onclick="Storage.openPanel();return false">Details\u2026</a>`;
     } else {
       state  = 'Browser storage only';
       colour = 'var(--text-3)';
-      detail = 'Saved in this browser, tied to <em>this exact file location</em>. Moving, renaming or copying the app starts from an empty data set, and clearing browser data loses it. Connect a data file to make your work portable.';
+      detail = 'Saved in this browser, tied to <em>this exact file location</em>. ' +
+               (DIR_API
+                 ? 'Connect a data folder to make your work portable and shared between copies of the app.'
+                 : 'Enable file saving to keep a copy you can carry.');
     }
 
     el.innerHTML = `
@@ -5953,27 +6472,29 @@ const Settings = {
         <strong>${state}</strong>
       </div>
       <div style="font-size:11px;color:var(--text-3);line-height:1.7">${detail}</div>
-      <div style="font-size:11px;color:var(--text-3)">
-        Last saved: ${last ? escHtml(new Date(last).toLocaleString('sv-SE')) : '—'}
-        &nbsp;·&nbsp; revision r${AppState.settings.revision || 0}
+      <div style="font-size:11px;color:var(--text-3);font-family:var(--mono);word-break:break-all">
+        ${writable ? 'Folder: ' + escHtml(StorageManager.dataFolder() || '(connected)') + '<br>' : ''}
+        Last saved: ${last ? escHtml(new Date(last).toLocaleString('sv-SE')) : '\u2014'}
+        &nbsp;\u00b7&nbsp; revision r${AppState.settings.revision || 0}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:2px">
-        <button class="btn btn-primary btn-sm" onclick="Storage.openPanel()">🗄 Data &amp; Backup…</button>
-        <button class="btn btn-secondary btn-sm" onclick="Storage.saveNow()">⬡ Save now</button>
+        <button class="btn btn-primary btn-sm" onclick="Storage.openPanel()">\ud83d\uddc4 Data &amp; Backup\u2026</button>
+        <button class="btn btn-secondary btn-sm" onclick="Storage.saveNow()">\u2b21 Save now</button>
+        <button class="btn btn-secondary btn-sm" onclick="Storage.loadDataFile()">\u2193 Load data file\u2026</button>
       </div>`;
   },
 
   async connectFolder() {
-    const ok = await StorageManager.connectDataFile();
+    const ok = await StorageManager.connectDataFolder();
     this.renderStorageStatus();
-    if (!ok) Toast.show('No data file selected.', 'info');
+    if (!ok) Toast.show('No data folder selected.', 'info');
   },
 
   async disconnectFolder() {
-    if (!confirm('Disconnect the data file? Saving will continue in this browser only, and your work will no longer be portable.')) return;
+    if (!confirm('Disconnect the data folder? Saving will continue in this browser only, and your work will no longer be portable.')) return;
     await StorageManager.disconnectDataFile();
     this.renderStorageStatus();
-    Toast.show('Data file disconnected — using browser storage', 'info');
+    Toast.show('Data folder disconnected \u2014 using browser storage', 'info');
   },
 
   renderStorageStatus() { this._renderStorageStatus(); },

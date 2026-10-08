@@ -76,10 +76,10 @@ Modules are plain object literals with underscore-prefixed private methods. Orde
 | `AppState` | In-memory store: `tasks[]`, `settings{}`. CRUD via `saveTask`, `deleteTask`, `getTask`, `getFilteredTasks`. `fromJSON` auto-migrates legacy string statuses. Serialised via `toJSON/fromJSON` |
 | `grp(plural)` | Helper function — reads `AppState.settings.groupSingular/groupPlural` and returns the correct label |
 | `GlobalFilter` | Runtime-only shared filter state: `selectedDate` (YYYY-MM-DD or null). `setDate` / `clearDate` trigger `SidebarCalendar.render()` and `App.refresh()`. Never persisted |
-| `IDB` | IndexedDB helper — `get/set/del/all/count(store, key)`. Stores `kv` (the persisted data-file handle) and `backups` (rolling restore points) |
-| `DataFile` | The owned data file. `init()` restores a remembered handle; `choose(mode)` picks one; `read()` / `write()` route through the File System Access API when available, otherwise through a fixed-name download plus an XHR read-back of the sibling file. `silent` is true only for the API path |
-| `StorageManager` | Startup reconciliation and writes. Resolves the data file vs the browser copy by `revision`, prompts on conflict, never fabricates data, keeps rolling restore points, and detects a data file that lags behind |
-| `Storage` | Persistence facade: `save(opts)` (debounced via `markDirty`), `saveNow()`, `exportHTML()` (verified portable snapshot), `exportFile()`, `exportCSV()`, `exportXLS()`, `triggerImport()`/`handleImport()`, and the Data & Backup panel (`openPanel`, `_renderPanel`) |
+| `IDB` | IndexedDB helper — `get/set/del/all/count(store, key)`. Stores `kv` (the persisted data-**folder** handle) and `backups` (rolling restore points). Firefox scopes this per `file://` path; Chromium and WebKit share one `file://` origin, which is what lets every app copy on a machine share one connected folder |
+| `DataFile` | The owned data file. `init()` restores a remembered folder handle; `choose()` opens the folder picker; `read()` / `write()` use the File System Access API where available (the only genuinely automatic route), otherwise a download plus a highest-revision scan of the data folder. `canRead()` reports whether the browser permits local file reads at all. `_rotateBackups()` shifts `wipflow-data.json.bak(N)` → `.bak(N+1)` and copies the live file to `.bak1` |
+| `StorageManager` | Startup reconciliation and writes. Resolves the data file against the browser copy by `revision`, prompts on conflict, never fabricates data, keeps rolling restore points, and verifies that a download write became visible. `_checkFileStaleness()` reports a lagging file only where the browser can actually read files |
+| `Storage` | Persistence facade: `save(opts)` (debounced via `markDirty`), `saveNow()`, `exportHTML()` (verified portable snapshot), `exportFile()`, `exportCSV()`, `exportXLS()`, `triggerImport()`/`handleImport()`, `loadDataFile()`, and the Data & Backup panel (`openPanel`, `_renderPanel`) |
 | `App` | Lifecycle: `init()`, `refresh()`, `switchView(name)`, autosave timer |
 | `TaskModal` | Create/edit task dialog |
 | `Dashboard` | Canvas-based KPI cards and bar charts. Respects `GlobalFilter.selectedDate` |
@@ -104,13 +104,14 @@ user action (TaskModal.save / KanbanView.onDrop / TableView inline edit)
         └─► Storage.save()                ← bumps settings.revision first
               └─► StorageManager._doSave(json, opts)
                     ├─► DataFile.write(json)
-                    │     ├─ File System Access API  → silent write to the file
+                    │     ├─ File System Access API → silent write, after
+                    │     │    _rotateBackups() makes .bak1…bak9
                     │     └─ download (Firefox/Safari) → only when opts.force,
                     │        i.e. explicit save or tab close
                     ├─► localStorage.setItem(STORAGE_KEY, json)   ← always
                     ├─► <script id="labwip-embedded-data"> updated in DOM
                     ├─► IDB backups.put({rev, at, tasks, json})   ← restore point
-                    └─► _noteFileWrite() when the file was written
+                    └─► verifyWriteLanded() after a download write
 ```
 
 Settings mutations (holiday add/remove, theme change, list edits) call `Storage.save()` directly for an immediate write. `Storage.saveNow()` passes `force: true`, which is what writes the data file on browsers without a file-write API.
@@ -120,8 +121,9 @@ Settings mutations (holiday add/remove, theme change, list edits) call `Storage.
 ```
 DOMContentLoaded (async)
   └─► StorageManager.init()       ← runs BEFORE App.init()
-        ├─► DataFile.init()               ← restore the remembered handle
-        ├─► DataFile.read()               ← file, or sibling XHR where possible
+        ├─► DataFile.init()               ← restore the remembered folder handle
+        ├─► DataFile.canRead()            ← does this browser permit local reads?
+        ├─► DataFile.read()               ← handle, or highest-revision folder scan
         ├─► _readCache()                  ← browser copy (STORAGE_KEY)
         ├─► _readLegacy()                 ← pre-3.0 key, migrated once
         ├─► reconcile by revision:
@@ -129,6 +131,18 @@ DOMContentLoaded (async)
         │     ├─ file newer                   → adopt file
         │     └─ nothing anywhere             → _firstRunPrompt(user chooses)
         └─► App.init()                    ← never seeds data on its own
+```
+
+### Capability detection
+
+```
+DataFile.canRead()
+  └─► tries to read a *different* file beside the page
+        (reading the page's own document proves nothing)
+        ├─ success → local reads allowed: a data file can be loaded automatically
+        └─ failure → blocked: Firefox (security.fileuri.strict_origin_policy),
+                     Chromium and WebKit all refuse
+                     → the UI says so, and offers Load data file… instead
 ```
 
 ### Portable snapshot

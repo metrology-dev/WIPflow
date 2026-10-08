@@ -29,13 +29,23 @@ export async function waitForApp(page) {
  *
  * Since v3.0 the app never seeds data on its own, so a first run shows a choice
  * overlay: start an empty project, load the demonstration tasks, connect a data
- * file, or import. Tests that need data should load the demo set.
+ * folder, or import. Tests that need data should load the demo set.
+ *
+ * Retries until the overlay is gone, because dismissing it also triggers an
+ * initial save and a second overlay can appear if that save races the reload.
  */
-export async function dismissSetup(page, { loadDemo = true } = {}) {
+export async function dismissSetup(page, { loadDemo = true, attempts = 3 } = {}) {
   const overlay = page.locator('#setup-overlay');
-  if (await overlay.isVisible({ timeout: 2000 }).catch(() => false)) {
+  for (let i = 0; i < attempts; i++) {
+    const visible = await overlay.isVisible({ timeout: 3000 }).catch(() => false);
+    if (!visible) {
+      // The overlay may not have been shown yet on a very fast load.
+      if (i === 0) { await page.waitForTimeout(300); continue; }
+      return;
+    }
     await page.locator(loadDemo ? '#setup-load-demo' : '#setup-new').click();
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(600);
+    if (!(await overlay.isVisible().catch(() => false))) return;
   }
 }
 

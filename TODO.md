@@ -1,61 +1,101 @@
 # WIP Flow — Development TODO
 
 Items grouped by priority. Bugs are confirmed against the current source (`WIPflow.html`).
-Last analysis: 2026-10-08 (v3.0 shipped — Reliable data management). Master is clean.
+Last analysis: 2026-10-08 (v3.1 shipped — storage corrected against real browsers).
 
 ---
 
 ## ✅ Completed
+
+### v3.1 — Storage corrected against real browsers (2026-10-08)
+
+**Why.** v3.0 assumed a browser could read back the data file it had downloaded.
+Testing against a **default profile of each engine** showed that assumption was wrong, so the
+feature could not work as described — and the app blamed the file instead of the browser.
+
+Measured behaviour for a file sitting beside the page:
+
+```
+Firefox   every local file read BLOCKED
+          (security.fileuri.strict_origin_policy defaults to true;
+           only the page's own document can be read)
+Chromium  file:// XHR refused outright
+WebKit    file:// XHR refused outright
+```
+
+Also established:
+
+- Repeated downloads are renamed by the browser itself — `wipflow-data.json`,
+  `wipflow-data(1).json`, `wipflow-data(2).json` … — and the obsolete
+  `browser.download.uniqueNames` preference no longer changes this.
+- Browser storage on `file://` is **per exact path** in Firefox (the recorded origin is the
+  full path), while Chromium and WebKit share one `file://` origin. That is why a single
+  connected folder can serve every app copy on a machine in Chrome/Edge, and why each app
+  path is isolated in Firefox.
+- A page cannot create files at all without the File System Access API, so `.bak` history is
+  possible only where that API exists.
+
+**Fixed:**
+
+- `DataFile.canRead()` detects whether the browser permits local file reads, and the UI reports
+  it: Data & Backup shows *Local file reads: allowed / blocked by this browser*, and the save
+  status reads *Saved · in this browser* rather than implying a file it cannot see.
+- The misleading "file lagging" warning no longer appears on browsers that simply cannot read
+  files; staleness is compared only where a comparison is meaningful.
+- **Load data file…** added — an explicit file picker that loads a saved `wipflow-data.json`,
+  refusing to replace newer data without asking. This is the supported recovery path on
+  Firefox and Safari.
+- Reads never trust the filename: the data folder is scanned and the copy with the **highest
+  revision** wins, so a stale canonical file can never beat a newer numbered one.
+- `.bak1 … .bak9` history written beside the data file wherever the app may write files; the
+  canonical name always holds the newest data, and the revision is deliberately not part of
+  the backup name so nothing can outrank it.
+- One nominated data folder serves every copy of `WIPflow.html` on the machine in Chrome/Edge,
+  with no further prompts.
+- `verifyWriteLanded()` re-reads the folder after a download write and reports when the newest
+  visible file is older than what was written.
+- A relative data-folder path is now normalised correctly before being used as a URL prefix.
+- Help, About, README, ARCHITECTURE and DATA_SCHEMA rewritten around the measured behaviour.
+  Version bumped to 3.1.
+
+**Verified.** 108 Vitest tests, 35 Playwright tests, a 34-check `file://` regression suite
+across Firefox, Chromium and WebKit, an 8-check capability suite, and runs against the real
+installed Firefox on both a default profile (reads blocked, app behaves honestly and data
+survives restarts) and a permissive one (highest-revision read path works end to end).
+
+### Known limitations, documented rather than worked around
+
+- Firefox and Safari cannot read local files, so a data file there must be loaded by hand and
+  automatic cross-machine pickup is impossible without a local server.
+- Firefox scopes browser storage per exact file path, so moving or renaming `WIPflow.html`
+  starts from an empty set. Use the data file or a snapshot to carry work across.
+- WebKit logs an access-control notice when the app probes for local files. It is unavoidable
+  for any local-file read there and does not affect behaviour.
 
 ### v3.0 — Reliable data management (2026-10-08)
 
 **Diagnosis.** Data was not preserved between sessions and exports appeared not to carry
 data. Root cause: the only writable stores were `localStorage` for the exact URL the file was
 opened from, plus an in-memory `<script>` tag; the app never wrote back to `WIPflow.html`.
-Browser storage on `file://` pages is keyed to the exact file path — confirmed by decoding the
-user's real Firefox profile, where the recorded origin is
-`file:///C:/Users/rosik/Downloads/WIPflow.html` and both stored payloads contained nothing but
-the 15 seed demo tasks with a fresh `modified` timestamp. Every export also produced a new
-filename, and therefore a new, empty storage bucket. Silent demo seeding
-(`if (AppState.tasks.length === 0) this._seedDemoData()`) then masked each miss, so data loss
-presented as an ordinary-looking populated app.
+Silent demo seeding (`if (AppState.tasks.length === 0) this._seedDemoData()`) then masked each
+miss, so data loss presented as an ordinary-looking populated app. Every export also produced a
+new filename, and therefore a new, empty storage bucket.
 
 **Fixed:**
 
 - The app no longer fabricates data. `App.init()` does not seed; a first-run overlay asks the
-  user to start empty, load demo tasks, connect a data file, or import a backup.
-- An owned data file (`wipflow-data.json`) is the source of truth. Written silently on every
-  change via the File System Access API in Chrome/Edge; written as a fixed-name download on
-  explicit save and on tab close in Firefox/Safari, and read back automatically at startup.
+  user to start empty, load demo tasks, connect a data folder, or import a backup.
 - `settings.revision` is a monotonically increasing counter. Startup reconciles the data file,
   the browser cache and the embedded payload by revision, and shows both versions with task
   counts and timestamps for the user to choose between. The old newest-`modified`-wins
   heuristic — which could silently load an unrelated newer file in Chromium — is gone.
-- Rolling restore points: the last 12 revisions in IndexedDB store `backups`, restorable from
-  the Data & Backup panel.
-- Stale-file detection: `LAST_FILE_REV_KEY` remembers the revision handed to the file system,
-  so a lagging file (browsers name repeats `name(1).json`) is reported rather than loaded.
-- `exportHTML()` now escapes `&`, `<`, `>` as `\u` sequences and verifies the payload
-  round-trips before producing the file. Previously any task text containing `<`, `&` or a
-  literal `</script>` could silently corrupt every future export.
-- New Data & Backup panel (click the sidebar save status): storage route, revision, task
-  count, file name, file revision, restore points, and all export/import actions.
-- Settings → Storage card rewritten to describe the real storage route and last save.
-- Pre-3.0 browser key `wipflow_data` is migrated once and then removed.
+- Rolling restore points: the last 12 revisions in IndexedDB store `backups`.
+- `exportHTML()` escapes `&`, `<`, `>` as `\u` sequences and verifies the payload round-trips
+  before producing the file.
+- New Data & Backup panel: storage route, revision, task count, restore points, and all
+  export/import actions in one place.
+- Pre-3.0 browser key `wipflow_data` is migrated once, then removed.
 - Version bumped to 3.0.
-
-**Verified** with automated browser tests across Firefox, Chromium and WebKit, plus a
-decisive run against the real installed Firefox binary: an edit is written to
-`wipflow-data.json`, and a later launch with a data-free `WIPflow.html` restores the task from
-that file with no user action.
-
-### Known behaviour, documented rather than fixed
-
-- Firefox and Safari cannot write files from a page, so the data file advances on explicit
-  save and on tab close rather than on every keystroke. The browser copy is authoritative and
-  always current, and WIP Flow reports when the file lags.
-- WebKit logs an access-control notice when probing for a sibling data file on `file://`. It is
-  unavoidable for any local-file read there and does not affect behaviour.
 
 ---
 

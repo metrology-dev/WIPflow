@@ -27,11 +27,23 @@ test.describe('LocalStorage persistence', () => {
 
     // Force save to localStorage
     await page.evaluate(() => Storage.save());
-    await page.waitForTimeout(500);
+
+    // Wait until the write has actually landed, rather than a fixed delay:
+    // the save is debounced and asynchronous, so reloading too early is racy.
+    await page.waitForFunction(name => {
+      try {
+        const raw = localStorage.getItem('labwip_data');
+        if (!raw) return false;
+        return (JSON.parse(raw).tasks || []).some(t => t.name === name);
+      } catch (e) { return false; }
+    }, uniqueName, { timeout: 10000 });
 
     // Reload
     await page.reload();
     await waitForApp(page);
+
+    // The app restores asynchronously; wait for the data to be adopted.
+    await page.waitForFunction(() => AppState.tasks.length > 0, null, { timeout: 10000 });
 
     // Task should survive reload
     const taskNames = await page.evaluate(() => AppState.tasks.map(t => t.name));
