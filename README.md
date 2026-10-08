@@ -2,7 +2,7 @@
 
 **A single-file, offline-first work-in-progress tracker.**
 
-WIP Flow runs entirely in your browser. Download one HTML file, open it, and start tracking tasks — no install, no server, no internet connection required. Your data is saved automatically and travels with the file.
+WIP Flow runs entirely in your browser. Download one HTML file, open it, and start tracking tasks — no install, no server, no internet connection required. Your data is saved automatically to your own data file, and the app never starts from fabricated data.
 
 ---
 
@@ -14,8 +14,8 @@ WIP Flow runs entirely in your browser. Download one HTML file, open it, and sta
 - **Kanban board** — drag-and-drop cards grouped by status, with keyboard-accessible move controls
 - **Calendar sidebar** — month calendar with task activity dots; click any date to filter all views simultaneously
 - **Print / export report** — configurable sections, paper size, and orientation; preview before printing
-- **File storage** — connect a folder once; tasks save to `tasks.json` automatically with a write-safe backup; survives browser cache clearing (Chrome/Edge)
-- **Export formats** — self-contained HTML, `.labwip` JSON backup, CSV, Excel (SpreadsheetML)
+- **Reliable data management** — an owned `wipflow-data.json` data file with revision tracking and conflict prompts; silent autosave in Chrome/Edge, automatic read-back in Firefox/Safari; rolling restore points; never fabricates data
+- **Export formats** — self-contained HTML snapshot, `.labwip` JSON backup, CSV, Excel (SpreadsheetML)
 - **Dark and light themes**
 - **Fully configurable** — rename groups, persons, statuses, priorities, tags, and holidays to match your workflow
 
@@ -24,9 +24,9 @@ WIP Flow runs entirely in your browser. Download one HTML file, open it, and sta
 ## Getting Started
 
 1. Download `WIPflow.html`
-2. Open it in a browser (Firefox or Chrome recommended)
-3. The app loads with 15 demonstration tasks — explore freely
-4. Clear them under **Settings → Data Management → Clear All Data** when ready to start fresh
+2. Open it in a browser (Firefox, Chrome, Edge or Safari)
+3. Choose how to start: an empty project, 15 demonstration tasks, an existing data file, or an import
+4. Chrome/Edge only: connect your data file once via **Data & Backup** for silent autosave
 5. Click **+ New Task** to create your first task
 
 No installation. No account. No network request.
@@ -102,27 +102,31 @@ The calendar section can be collapsed by clicking the **Calendar** header.
 
 ## Saving & Portability
 
-WIP Flow uses multiple complementary layers so your data is never lost:
+WIP Flow keeps your work in three places at once, so a single failure never costs you data. Click the **save status** at the bottom of the sidebar to open **Data & Backup** and see which route is active.
 
-**1 — File storage (Chrome/Edge, recommended)**
-Connect a folder once via **Settings → Storage → Connect Folder**. WIP Flow saves tasks to `tasks.json` in that folder after every change. Before each write, the previous file is backed up to `tasks.backup.json` — if `tasks.json` is ever corrupted, the backup is restored automatically on startup. The 📁 prefix in the save indicator confirms file storage is active. Tasks in a file survive browser cache clearing and can be copied to other computers.
+**1 — Your data file (source of truth)**
+WIP Flow owns `wipflow-data.json`. Every save carries a revision number that increases monotonically.
 
-**2 — localStorage (always active, safety net)**
-Every save also writes to browser localStorage. When file storage is active this is an additional safety net. _Limitation:_ localStorage is scoped to the file URL — moving `WIPflow.html` to a different folder loses the association.
+- **Chrome / Edge** — connect the file once via **Data & Backup → Connect existing data file**. Every change is then written straight into it, silently, with no dialogs. This is the best experience.
+- **Firefox / Safari** — these browsers do not let a page write files. WIP Flow therefore writes the file as a download when you press **Save** and when you close the tab, and reads it back automatically at startup. Put `wipflow-data.json` in the same folder as `WIPflow.html` and your work returns with no clicks. Browsers name repeated downloads `wipflow-data(1).json`, so keep the newest copy beside the app; WIP Flow detects a lagging file and tells you rather than loading older data.
 
-**3 — Embedded data (self-contained HTML)**
-On every save the full dataset is written into a `<script>` tag inside the HTML in memory. Clicking **↓ Save as HTML** downloads a versioned self-contained copy with all data embedded. Open it on any machine, any browser, without needing localStorage or a folder.
+_Why a file and not just the browser?_
+Browser storage on `file://` pages is keyed to the exact file path — Firefox records the full `file:///.../WIPflow.html` path as the storage origin. Moving or renaming `WIPflow.html` therefore starts from an empty data set. A file you own travels with you; browser storage does not.
 
-**4 — `.labwip` JSON export**
-**Settings → Data Management → Export .labwip** downloads a plain JSON snapshot. Import it with **↓ Import** in the topbar to restore data into any copy of WIP Flow.
+**2 — The browser copy (always current)**
+Every save also writes to browser storage. This is the fastest layer and the one WIP Flow reads when the data file is missing, unreadable or older. Treat it as a safety net, not the primary store.
 
-**Recommended workflow (Chrome/Edge):**
-On first launch, choose a folder. From then on, tasks save automatically — nothing else to do. Copy the `tasks.json` file to move your data to another machine.
+**3 — Restore points, snapshots and backups**
+The last 12 revisions are kept automatically and can be restored from **Data & Backup → Restore points**. **↓ Portable snapshot** downloads a self-contained copy of the whole app with the data embedded — useful for archiving or handing to someone else. **Export .labwip** produces a plain JSON backup for interchange.
 
-**Recommended workflow (Firefox or any browser):**
-Work normally (localStorage handles daily saves). Periodically click **↓ Save as HTML** and replace your working `WIPflow.html` with the downloaded file.
+**Moving the app to another computer**
+1. Copy `WIPflow.html` *and* `wipflow-data.json` together — two files, one folder.
+2. Open `WIPflow.html`. Your work is read from the file. In Chrome or Edge, connect the file once more for silent autosave.
 
-**Version numbers** take the form `MAJOR.MINOR.SAVE`. The SAVE counter increments automatically on each **↓ Save as HTML**, giving every exported file a unique, monotonically increasing identifier.
+**If two versions ever disagree**
+WIP Flow shows both with their revision, task count and timestamp and asks which one you want. It never overwrites silently and never guesses from timestamps. On first run it never invents data: you choose an empty project, 15 demonstration tasks, an existing data file, or an import.
+
+**Version numbers** take the form `MAJOR.MINOR.SAVE`. The SAVE counter increments on each **↓ Portable snapshot**, giving every exported file a unique, monotonically increasing identifier.
 
 ---
 
@@ -163,11 +167,19 @@ Starting from the start date, the app counts forward that many calendar workdays
 
 | Format | How to access | Notes |
 |--------|--------------|-------|
-| Self-contained HTML | ↓ Save as HTML (sidebar or topbar) | Full portable copy with data embedded |
-| `.labwip` JSON | Settings → Export backup snapshot | Re-importable full backup |
+| Self-contained HTML | ↓ Portable snapshot (sidebar or topbar) | Full portable copy with data embedded — a copy, not your working file |
+| `.labwip` JSON | Data & Backup → Export .labwip | Re-importable full backup |
 | CSV | Settings → Export CSV | Spreadsheet view only — one-way, no re-import |
 | Excel (.xls) | Settings → Export Excel | SpreadsheetML, opens in Excel and LibreOffice |
 | Print / PDF | Settings → Print / Export Report | Configurable sections, paper size, orientation; preview before print |
+
+### Browser support for data management
+
+| Browser | Writing the data file | Reading the data file | Experience |
+|---------|----------------------|----------------------|------------|
+| Chrome / Edge | File System Access API — silent, every change | Remembered handle | Fully automatic |
+| Firefox | Download on Save and on tab close (`file://` pages cannot write files) | Automatic, from beside `WIPflow.html` | Automatic read, one-click sync on save |
+| Safari | Download on Save and on tab close | Automatic, from beside `WIPflow.html` | As Firefox |
 
 ---
 
@@ -213,15 +225,20 @@ python -m http.server 5500
 
 ### Data schema
 
-The `.labwip` format and `localStorage` both use the same JSON envelope:
+The data file, the browser cache and `.labwip` exports all use the same JSON envelope:
 
 ```json
 {
-  "version": "1.0",
+  "version": "3.0",
+  "revision": 12,
+  "appVersion": "3.0",
+  "savedAt": "<ISO timestamp>",
+  "savedFrom": "file:///.../WIPflow.html",
   "settings": {
     "theme": "dark",
     "autosaveIntervalMinutes": 5,
     "saveVersion": 0,
+    "revision": 12,
     "labs": [],
     "persons": [],
     "priorities": [],
@@ -252,12 +269,16 @@ The `.labwip` format and `localStorage` both use the same JSON envelope:
 }
 ```
 
-New settings keys added to `DEFAULT_SETTINGS` appear automatically for existing users on next load.
+`revision` is a monotonically increasing counter used to decide which copy is newer. Files
+without it (v2.5 and earlier) are accepted and treated as revision 1, so existing backups
+import cleanly. New settings keys added to `DEFAULT_SETTINGS` appear automatically for
+existing users on next load.
 
 ---
 
 ## Changelog
 
+- **v3.0** — Reliable data management: an owned `wipflow-data.json` data file with revision tracking, silent autosave in Chrome/Edge and automatic read-back in Firefox/Safari; explicit first-run choice and recovery prompts instead of silent demo seeding; rolling restore points; stale-file detection; verified, escaping-safe portable snapshots; Data & Backup panel
 - **v2.5** — Automated testing infrastructure (Vitest unit/integration tests and Playwright end-to-end tests)
 - **v2.4** — Calendar activity categories: each status now carries an *Activity Category* (Planned Work / Active Work / Attention Needed / No Calendar Marker) that controls calendar dot rendering; Settings → Task Statuses adds an Activity Category dropdown per status; legacy files auto-migrate on load
 - **v2.3** — File storage with File System Access API; `tasks.json` with write-safe backup; first-time setup; migration from localStorage; external-change detection; Settings → Storage card

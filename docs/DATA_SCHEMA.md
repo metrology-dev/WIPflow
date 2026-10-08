@@ -1,13 +1,14 @@
 # WIP Flow — Data Schema
 
-WIP Flow stores task data in up to four places simultaneously:
+WIP Flow stores task data in several places simultaneously:
 
-- **`tasks.json`** — a file in a user-chosen folder via the File System Access API (Chrome/Edge only; optional)
-- **`tasks.backup.json`** — write-safe backup of the previous `tasks.json` state, created before every write
-- **Browser `localStorage`** — always active, under the key `labwip_data`; serves as a safety net when file storage is active and as the primary store in Firefox or when no folder is connected
-- **`<script id="labwip-embedded-data">`** — embedded inside the HTML file; kept in sync on every save so that the file is self-contained for the **↓ Save as HTML** export
+- **`wipflow-data.json`** — the owned data file, and the source of truth. Written silently on every change via the File System Access API in Chrome/Edge; written as a download on Save and on tab close in Firefox/Safari, and read back automatically at startup when it sits beside `WIPflow.html`
+- **Browser storage** — always active, under the key `labwip_data`. The fastest layer, and the one read when the data file is missing, unreadable or older
+- **IndexedDB (`wipflow`)** — holds the persisted data-file handle and, in the `backups` store, the last 12 revisions as restore points
+- **`<script id="labwip-embedded-data">`** — inside the HTML file; kept in sync on every save and used as the payload for the **↓ Portable snapshot** export, and as a fallback source when nothing else has data
 
-All four representations use the same JSON envelope.
+All representations use the same JSON envelope, distinguished by a `revision` counter that
+decides which copy is newer. A copy is never chosen by timestamp.
 
 ---
 
@@ -15,13 +16,26 @@ All four representations use the same JSON envelope.
 
 ```json
 {
-  "version": "1.0",
+  "version": "3.0",
+  "revision": 12,
+  "appVersion": "3.0",
+  "savedAt": "2026-06-03T09:00:00.000Z",
+  "savedFrom": "file:///C:/Apps/WIPflow/WIPflow.html",
   "settings": { ... },
   "tasks": [ ... ]
 }
 ```
 
-`version` is a fixed schema version string (`"1.0"`), not the app version.
+| Field | Description |
+|-------|-------------|
+| `version` | Schema version of the payload |
+| `revision` | Monotonically increasing save counter. Used to decide which copy is newer and to detect a file that lags behind the browser copy |
+| `appVersion` | `APP_BASE_VERSION` of the build that wrote the payload |
+| `savedAt` | ISO timestamp of the save |
+| `savedFrom` | URL the payload was written from — makes cross-location confusion visible |
+
+Payloads written before v3.0 have no `revision`; they are accepted and treated as revision 1
+so existing `.labwip` backups import cleanly.
 
 ---
 
@@ -32,6 +46,7 @@ All four representations use the same JSON envelope.
   "theme": "dark",
   "autosaveIntervalMinutes": 5,
   "saveVersion": 0,
+  "revision": 12,
   "labs": ["Lab A", "Lab B"],
   "persons": ["Alice", "Bob"],
   "priorities": ["High", "Medium", "Low"],
@@ -58,7 +73,8 @@ All four representations use the same JSON envelope.
 |-------|------|-------------|
 | `theme` | `"dark"` \| `"light"` | UI colour scheme |
 | `autosaveIntervalMinutes` | number | Periodic autosave interval; `0` disables it |
-| `saveVersion` | number | Incremented automatically on each **↓ Save as HTML** |
+| `saveVersion` | number | Incremented automatically on each **↓ Portable snapshot** |
+| `revision` | number | Monotonically increasing data revision, incremented on every save |
 | `labs` | string[] | Available group names |
 | `persons` | string[] | Available person names |
 | `priorities` | string[] | Available priority labels |
@@ -125,7 +141,8 @@ New keys added to `DEFAULT_SETTINGS` appear automatically for existing users on 
 
 | Format | Extension | Re-importable | Notes |
 |--------|-----------|---------------|-------|
-| Self-contained HTML | `.html` | No (open directly) | Full portable copy with data embedded in a `<script>` tag |
+| Data file | `.json` | Yes | `wipflow-data.json` — the live source of truth |
+| Self-contained HTML | `.html` | No (open directly) | Portable snapshot with the data embedded in a `<script>` tag |
 | Backup snapshot | `.labwip` | Yes | Plain JSON — the envelope above |
 | CSV | `.csv` | No | One-way export for spreadsheets |
 | Excel | `.xls` | No | SpreadsheetML format |
@@ -135,5 +152,7 @@ New keys added to `DEFAULT_SETTINGS` appear automatically for existing users on 
 ## Backwards Compatibility
 
 - Internal field names (`task.lab`, `settings.labs`, CSS class `f-lab`, canvas key `chart-lab`) are intentionally kept as `"lab"` even though the user-facing label is configurable. Changing them would break existing `.labwip` files.
-- `AppState.fromJSON` deep-merges loaded settings over `DEFAULT_SETTINGS`, so new keys in `DEFAULT_SETTINGS` appear automatically without requiring a migration.
+- `AppState.fromJSON` merges loaded settings over `DEFAULT_SETTINGS`, so new keys in `DEFAULT_SETTINGS` appear automatically without requiring a migration.
 - `settings.statuses` was a plain string array before v2.4. `AppState.fromJSON` auto-migrates legacy string entries to `{name, activityCategory}` objects using name-based heuristics (case-insensitive). Unknown names default to `activityCategory: "none"`. No data is lost.
+- Payloads without `revision` (v2.5 and earlier) are treated as revision 1.
+- The pre-3.0 browser storage key `wipflow_data` is read once on first run, adopted, and then removed once the data has been written to the new key. Nothing is discarded.

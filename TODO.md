@@ -1,7 +1,61 @@
 # WIP Flow — Development TODO
 
 Items grouped by priority. Bugs are confirmed against the current source (`WIPflow.html`).
-Last analysis: 2026-06-07 (v2.5 shipped — Automated testing infrastructure). Master is clean.
+Last analysis: 2026-10-08 (v3.0 shipped — Reliable data management). Master is clean.
+
+---
+
+## ✅ Completed
+
+### v3.0 — Reliable data management (2026-10-08)
+
+**Diagnosis.** Data was not preserved between sessions and exports appeared not to carry
+data. Root cause: the only writable stores were `localStorage` for the exact URL the file was
+opened from, plus an in-memory `<script>` tag; the app never wrote back to `WIPflow.html`.
+Browser storage on `file://` pages is keyed to the exact file path — confirmed by decoding the
+user's real Firefox profile, where the recorded origin is
+`file:///C:/Users/rosik/Downloads/WIPflow.html` and both stored payloads contained nothing but
+the 15 seed demo tasks with a fresh `modified` timestamp. Every export also produced a new
+filename, and therefore a new, empty storage bucket. Silent demo seeding
+(`if (AppState.tasks.length === 0) this._seedDemoData()`) then masked each miss, so data loss
+presented as an ordinary-looking populated app.
+
+**Fixed:**
+
+- The app no longer fabricates data. `App.init()` does not seed; a first-run overlay asks the
+  user to start empty, load demo tasks, connect a data file, or import a backup.
+- An owned data file (`wipflow-data.json`) is the source of truth. Written silently on every
+  change via the File System Access API in Chrome/Edge; written as a fixed-name download on
+  explicit save and on tab close in Firefox/Safari, and read back automatically at startup.
+- `settings.revision` is a monotonically increasing counter. Startup reconciles the data file,
+  the browser cache and the embedded payload by revision, and shows both versions with task
+  counts and timestamps for the user to choose between. The old newest-`modified`-wins
+  heuristic — which could silently load an unrelated newer file in Chromium — is gone.
+- Rolling restore points: the last 12 revisions in IndexedDB store `backups`, restorable from
+  the Data & Backup panel.
+- Stale-file detection: `LAST_FILE_REV_KEY` remembers the revision handed to the file system,
+  so a lagging file (browsers name repeats `name(1).json`) is reported rather than loaded.
+- `exportHTML()` now escapes `&`, `<`, `>` as `\u` sequences and verifies the payload
+  round-trips before producing the file. Previously any task text containing `<`, `&` or a
+  literal `</script>` could silently corrupt every future export.
+- New Data & Backup panel (click the sidebar save status): storage route, revision, task
+  count, file name, file revision, restore points, and all export/import actions.
+- Settings → Storage card rewritten to describe the real storage route and last save.
+- Pre-3.0 browser key `wipflow_data` is migrated once and then removed.
+- Version bumped to 3.0.
+
+**Verified** with automated browser tests across Firefox, Chromium and WebKit, plus a
+decisive run against the real installed Firefox binary: an edit is written to
+`wipflow-data.json`, and a later launch with a data-free `WIPflow.html` restores the task from
+that file with no user action.
+
+### Known behaviour, documented rather than fixed
+
+- Firefox and Safari cannot write files from a page, so the data file advances on explicit
+  save and on tab close rather than on every keystroke. The browser copy is authoritative and
+  always current, and WIP Flow reports when the file lags.
+- WebKit logs an access-control notice when probing for a sibling data file on `file://`. It is
+  unavoidable for any local-file read there and does not affect behaviour.
 
 ---
 
@@ -9,14 +63,921 @@ Last analysis: 2026-06-07 (v2.5 shipped — Automated testing infrastructure). M
 
 No open items. Possible future directions:
 
-- Settings: "Clear browser localStorage backup" button for migrated users who want to clean up
-- Settings: Show `tasks.json` file path or last-saved timestamp
-- Conflict resolution when external changes are detected (merge instead of replace)
-- Calendar click: "Open Task List" mode, task creation from calendar, date range selection
-- Week / agenda view in the sidebar calendar
-- Status color: add a `color` field to status objects; user-configurable colors per status
-- E2E tests: add Firefox project to Playwright config once selector compatibility is verified
-- Adopt Material Design 3 (MD3) as the system-wide design language — typography/fonts, color tokens, component styles (buttons, inputs, cards, dialogs), and elevation/shape conventions, applied consistently across all views (Dashboard, Table, Gantt, Kanban, Settings, Help, About)
+
+### Settings — Allow users to remove the legacy browser backup after successful migration
+
+##### Objective
+
+When WIP Flow migrated from browser-only storage to the File System Access API, the previous `localStorage` data was intentionally preserved as a safety backup.
+
+After users have successfully used `tasks.json` for some time, they may wish to remove this obsolete backup.
+
+Implement a safe cleanup function in Settings.
+
+---
+
+##### Background
+
+The browser backup should never be removed automatically.
+
+It exists solely as a migration safety net.
+
+This feature provides an explicit user-controlled cleanup.
+
+---
+
+##### User Interface
+
+Under the Storage section in Settings, add:
+
+**Button**
+
+```
+Clear browser backup
+```
+
+The button should only be visible when:
+
+- File Storage is active
+- A legacy localStorage backup exists
+
+Otherwise hide or disable it.
+
+---
+
+##### Confirmation Dialog
+
+Before deleting anything, show a confirmation dialog.
+
+Example:
+
+> Remove the browser backup created during migration?
+>
+> Your project is already stored in `tasks.json`.
+> This will only delete the old emergency copy kept in this browser.
+>
+> This action cannot be undone.
+
+Buttons:
+
+- Cancel
+- Delete Backup
+
+---
+
+##### Implementation
+
+Add a StorageManager helper:
+
+```
+StorageManager.hasLegacyBackup()
+```
+
+and
+
+```
+StorageManager.clearLegacyBackup()
+```
+
+The cleanup should remove only the backup used for migration.
+
+Do **not** clear unrelated application settings.
+
+Examples of settings that must remain:
+
+- Theme
+- Sidebar state
+- Window preferences
+- Recent folders
+- Other configuration
+
+Only project/task data should be removed.
+
+---
+
+##### User Feedback
+
+After successful deletion:
+
+- Show toast:
+  - "Browser backup removed."
+- Refresh the Settings page.
+- Button disappears.
+
+---
+
+##### Error Handling
+
+If deletion fails:
+
+- Show an error toast.
+- Leave the backup untouched.
+
+---
+
+##### Tests
+
+Unit tests:
+
+- Backup detected
+- Backup absent
+- Successful deletion
+- Settings preserved
+
+Playwright:
+
+- Button visibility
+- Confirmation dialog
+- Successful cleanup
+- Button disappears afterward
+
+---
+
+##### Acceptance Criteria
+
+✓ Backup detected correctly
+
+✓ Cleanup removes only migrated task data
+
+✓ User settings remain intact
+
+✓ Confirmation required
+
+✓ Fully covered by automated tests
+
+---
+
+### Settings — Display current tasks.json location and save information
+
+##### Objective
+
+Provide users with additional visibility into where their project is stored.
+
+The Storage section should show information about the active project file.
+
+---
+
+##### User Interface
+
+Below the Storage Provider section display:
+
+```
+Project File
+tasks.json
+```
+
+When supported, also display:
+
+```
+Folder
+<My Selected Folder>
+```
+
+Optionally display:
+
+```
+Last Saved
+2026-06-18 14:35
+```
+
+or
+
+```
+Last modified
+```
+
+depending on what information is reliably available.
+
+---
+
+##### Behaviour
+
+If File System Access is active:
+
+Display available metadata.
+
+If browser storage is active:
+
+Display:
+
+```
+Browser Storage (localStorage)
+```
+
+instead.
+
+---
+
+##### Timestamp
+
+Whenever a save succeeds:
+
+- Update the displayed timestamp.
+- No page refresh required.
+
+---
+
+##### Implementation
+
+Extend StorageManager to expose:
+
+```
+getStorageInfo()
+```
+
+Example:
+
+```
+{
+    provider,
+    fileName,
+    folderName,
+    lastSaved,
+    connected
+}
+```
+
+Settings should consume this information without duplicating storage logic.
+
+---
+
+##### Design
+
+Keep presentation lightweight.
+
+This is informational only.
+
+Do not add editing capabilities.
+
+---
+
+##### Tests
+
+Unit:
+
+- Metadata generation
+
+Integration:
+
+- Timestamp updates after save
+
+Playwright:
+
+- Storage info visible
+- Browser storage fallback
+
+---
+
+##### Acceptance Criteria
+
+✓ Current storage information displayed
+
+✓ Updates automatically after save
+
+✓ Browser storage handled gracefully
+
+✓ Fully tested
+
+---
+
+### Conflict resolution — Merge external changes instead of replacing local state
+
+##### Objective
+
+Replace the current "reload or ignore" behaviour with intelligent conflict detection and merging.
+
+Users should not lose work when `tasks.json` changes externally.
+
+---
+
+##### Background
+
+Currently:
+
+- External modification is detected.
+- User is prompted to reload.
+- Reload replaces the entire in-memory project.
+
+Instead, implement safe merging.
+
+---
+
+##### Merge Strategy
+
+Treat tasks as uniquely identified objects.
+
+Merge based on task ID.
+
+Cases:
+
+### Local only
+
+Keep.
+
+### External only
+
+Import.
+
+### Same task modified
+
+Compare modification timestamps.
+
+Newest version wins.
+
+If timestamps unavailable:
+
+Prompt user.
+
+---
+
+##### Conflict Dialog
+
+If automatic resolution is impossible:
+
+Display:
+
+```
+Conflicting changes detected.
+```
+
+Show:
+
+- Local version
+- External version
+
+Options:
+
+- Keep Local
+- Keep External
+
+---
+
+##### Deletions
+
+Deleted tasks require explicit handling.
+
+Avoid accidental resurrection.
+
+Prefer tombstone markers or deletion timestamps if needed.
+
+---
+
+##### Architecture
+
+Implement merge logic as a standalone module.
+
+Example:
+
+```
+ProjectMerge.merge(local, external)
+```
+
+StorageManager should only orchestrate.
+
+---
+
+##### Tests
+
+Unit:
+
+- Additions
+- Updates
+- Deletions
+- Simultaneous edits
+
+Integration:
+
+- Merge during reload
+
+Playwright:
+
+- Simulated external edit
+- Conflict resolution workflow
+
+---
+
+##### Acceptance Criteria
+
+✓ External changes merged automatically
+
+✓ Conflicts detected correctly
+
+✓ No silent data loss
+
+✓ Merge engine independently tested
+
+---
+
+### Calendar interaction — Open task lists, create tasks and select date ranges
+
+##### Objective
+
+Transform the sidebar calendar into an interactive planning tool.
+
+Calendar clicks should support navigation, filtering and task creation.
+
+---
+
+##### Features
+
+### Open Task List
+
+Clicking a day should optionally open a filtered task list for that date.
+
+Configurable behaviour:
+
+- Filter only
+- Open task list
+- Both
+
+---
+
+### Create Task
+
+Double-click or context menu:
+
+```
+New task on selected date
+```
+
+Task editor opens with:
+
+Start Date prefilled.
+
+---
+
+### Date Range Selection
+
+Support:
+
+- Click
+- Shift-click
+- Drag
+
+Selected range becomes active filter.
+
+Visual highlight required.
+
+---
+
+##### Filtering
+
+Date range affects:
+
+- Dashboard
+- Table
+- Kanban
+- Gantt
+
+Clear filter easily.
+
+---
+
+##### Architecture
+
+Calendar remains presentation layer.
+
+Selection state belongs in AppState.
+
+---
+
+##### Tests
+
+Unit:
+
+- Range calculations
+
+Integration:
+
+- Filter propagation
+
+Playwright:
+
+- Click
+- Double-click
+- Drag selection
+- Task creation
+
+---
+
+##### Acceptance Criteria
+
+✓ Calendar supports interactive workflows
+
+✓ Range filtering works
+
+✓ Task creation integrated
+
+✓ Fully tested
+
+---
+
+### Sidebar calendar — Add optional Week and Agenda views
+
+##### Objective
+
+Expand the sidebar calendar with alternative viewing modes better suited for planning.
+
+---
+
+##### Modes
+
+Support:
+
+- Month (existing)
+- Week
+- Agenda
+
+Switch using segmented buttons.
+
+---
+
+##### Week View
+
+Display:
+
+- Current week
+- Daily task counts
+- Activity indicators
+- Today highlight
+
+---
+
+##### Agenda View
+
+Chronological list:
+
+Date
+
+Tasks
+
+Status
+
+Responsible person
+
+Compact presentation.
+
+---
+
+##### Filtering
+
+Selecting an entry behaves identically to month view.
+
+---
+
+##### Architecture
+
+SidebarCalendar should expose interchangeable renderers.
+
+Avoid duplicating calendar logic.
+
+---
+
+##### Tests
+
+Unit:
+
+- Week calculations
+
+Integration:
+
+- Shared filtering
+
+Playwright:
+
+- View switching
+- Navigation
+
+---
+
+##### Acceptance Criteria
+
+✓ Three interchangeable views
+
+✓ Shared filtering behaviour
+
+✓ Minimal duplicated code
+
+✓ Fully tested
+
+---
+
+### Status colors — User-configurable colors independent of activity categories
+
+##### Objective
+
+Extend status definitions with configurable display colors.
+
+Colors should be independent of activity categories.
+
+---
+
+##### Data Model
+
+Extend:
+
+```
+{
+    name,
+    activityCategory,
+    color
+}
+```
+
+Provide automatic migration.
+
+Legacy statuses receive sensible defaults.
+
+---
+
+##### Settings
+
+Each status row gains:
+
+Color picker.
+
+Allow:
+
+- Native color input
+- Hex value
+
+---
+
+##### Usage
+
+Apply colors consistently in:
+
+- Table
+- Kanban
+- Dashboard
+- Calendar tooltips
+- Task editor
+
+Do not replace calendar activity dots.
+
+Those continue using activity categories.
+
+---
+
+##### Accessibility
+
+Ensure sufficient contrast.
+
+Provide default palette.
+
+---
+
+##### Tests
+
+Migration tests.
+
+Rendering tests.
+
+Persistence tests.
+
+Playwright color editing.
+
+---
+
+##### Acceptance Criteria
+
+✓ Colors configurable
+
+✓ Existing projects migrate automatically
+
+✓ Activity categories unaffected
+
+✓ Fully tested
+
+---
+
+### Testing — Enable Firefox Playwright project after compatibility verification
+
+##### Objective
+
+Expand end-to-end testing to include Firefox.
+
+---
+
+##### Background
+
+Current E2E tests execute in Chromium.
+
+Firefox support should be added once selector compatibility has been verified.
+
+---
+
+##### Tasks
+
+Enable Firefox project in:
+
+```
+playwright.config.js
+```
+
+Run complete suite.
+
+Fix browser-specific issues.
+
+Avoid browser-specific workarounds unless unavoidable.
+
+---
+
+##### Areas to verify
+
+- Dialogs
+- Calendar
+- Drag interactions
+- File Storage fallback
+- localStorage mode
+- Keyboard shortcuts
+
+---
+
+##### CI
+
+Firefox should execute alongside Chromium.
+
+Document expected runtime increase.
+
+---
+
+##### Acceptance Criteria
+
+✓ Firefox project enabled
+
+✓ All E2E tests pass
+
+✓ Browser-specific issues documented
+
+✓ CI updated
+
+---
+
+### UI Modernization — Adopt Material Design 3 as the system-wide design language
+
+##### Objective
+
+Modernize WIP Flow by adopting Material Design 3 (MD3) as the application's visual design language while preserving its architecture, offline-first philosophy, performance, and usability.
+
+This is a visual and UX refactoring project, **not** a functional rewrite.
+
+---
+
+##### Design Principles
+
+The implementation should follow Material Design 3 concepts including:
+
+- Typography hierarchy
+- Color roles and semantic color tokens
+- Shape system
+- Elevation model
+- Component spacing
+- Motion principles
+- Focus and accessibility states
+
+Do **not** introduce a dependency on Material UI or another framework.
+
+Instead, implement MD3 using the application's existing HTML, CSS and JavaScript architecture.
+
+---
+
+##### Typography
+
+Introduce a consistent typography scale.
+
+Examples:
+
+- Display
+- Headline
+- Title
+- Body
+- Label
+
+Replace inconsistent font sizes with reusable design tokens.
+
+---
+
+##### Color System
+
+Replace hard-coded colors with semantic tokens.
+
+Examples:
+
+```
+--md-surface
+--md-surface-container
+--md-primary
+--md-secondary
+--md-outline
+--md-error
+```
+
+Support both light and dark themes.
+
+---
+
+##### Components
+
+Restyle all major UI components.
+
+Including:
+
+- Buttons
+- Inputs
+- Selects
+- Cards
+- Dialogs
+- Toolbars
+- Navigation
+- Tabs
+- Menus
+- Tables
+- Status chips
+- Toasts
+- Modals
+
+Use consistent corner radius, spacing and elevation.
+
+---
+
+##### Views
+
+Apply the new design consistently across:
+
+- Dashboard
+- Table
+- Kanban
+- Gantt
+- Calendar
+- Settings
+- Help
+- About
+
+No view should retain legacy styling.
+
+---
+
+##### Icons
+
+Review icon consistency.
+
+Standardize sizing, spacing and visual weight.
+
+---
+
+##### Layout
+
+Improve whitespace and alignment.
+
+Avoid unnecessary visual clutter.
+
+Preserve the application's information density.
+
+---
+
+##### Accessibility
+
+Maintain or improve:
+
+- Keyboard navigation
+- Contrast ratios
+- Focus indicators
+- Screen reader compatibility
+
+---
+
+##### Performance
+
+The redesign should not noticeably increase startup time or rendering cost.
+
+Avoid introducing heavy CSS frameworks or runtime dependencies.
+
+---
+
+##### Testing
+
+Visual regression review.
+
+Playwright screenshots where appropriate.
+
+Verify all interaction tests continue to pass.
+
+---
+
+##### Acceptance Criteria
+
+✓ Complete MD3 visual language implemented
+
+✓ Consistent design across every view
+
+✓ No functional regressions
+
+✓ No framework dependency introduced
+
+✓ Existing automated tests continue to pass
+
+✓ Application remains lightweight, offline-first and maintainable
 
 ---
 

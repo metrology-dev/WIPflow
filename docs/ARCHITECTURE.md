@@ -76,10 +76,10 @@ Modules are plain object literals with underscore-prefixed private methods. Orde
 | `AppState` | In-memory store: `tasks[]`, `settings{}`. CRUD via `saveTask`, `deleteTask`, `getTask`, `getFilteredTasks`. `fromJSON` auto-migrates legacy string statuses. Serialised via `toJSON/fromJSON` |
 | `grp(plural)` | Helper function — reads `AppState.settings.groupSingular/groupPlural` and returns the correct label |
 | `GlobalFilter` | Runtime-only shared filter state: `selectedDate` (YYYY-MM-DD or null). `setDate` / `clearDate` trigger `SidebarCalendar.render()` and `App.refresh()`. Never persisted |
-| `IDB` | IndexedDB helper — `get/set/del(key)`. Persists `FileSystemDirectoryHandle` across browser sessions |
-| `FileSystemStorageProvider` | File System Access API wrapper. `chooseFolder`, `load`, `save` (write-safe: backup before write), `loadBackup`, `disconnect`. `supported` is `false` in Firefox |
-| `StorageManager` | Async startup orchestrator. Runs before `App.init()`. Handles provider selection, first-time setup overlay, localStorage migration, external-change detection, and page-lifecycle save hooks |
-| `Storage` | Persistence facade: `save()` delegates to `StorageManager._doSave()`; `exportHTML()`, `exportFile()`, `exportCSV()`, `exportXLS()`, `markDirty()` (debounced 500 ms). `load()` removed — loading handled by `StorageManager.init()` |
+| `IDB` | IndexedDB helper — `get/set/del/all/count(store, key)`. Stores `kv` (the persisted data-file handle) and `backups` (rolling restore points) |
+| `DataFile` | The owned data file. `init()` restores a remembered handle; `choose(mode)` picks one; `read()` / `write()` route through the File System Access API when available, otherwise through a fixed-name download plus an XHR read-back of the sibling file. `silent` is true only for the API path |
+| `StorageManager` | Startup reconciliation and writes. Resolves the data file vs the browser copy by `revision`, prompts on conflict, never fabricates data, keeps rolling restore points, and detects a data file that lags behind |
+| `Storage` | Persistence facade: `save(opts)` (debounced via `markDirty`), `saveNow()`, `exportHTML()` (verified portable snapshot), `exportFile()`, `exportCSV()`, `exportXLS()`, `triggerImport()`/`handleImport()`, and the Data & Backup panel (`openPanel`, `_renderPanel`) |
 | `App` | Lifecycle: `init()`, `refresh()`, `switchView(name)`, autosave timer |
 | `TaskModal` | Create/edit task dialog |
 | `Dashboard` | Canvas-based KPI cards and bar charts. Respects `GlobalFilter.selectedDate` |
@@ -101,36 +101,45 @@ Modules are plain object literals with underscore-prefixed private methods. Orde
 ```
 user action (TaskModal.save / KanbanView.onDrop / TableView inline edit)
   └─► Storage.markDirty()                 ← debounced 500 ms
-        └─► Storage.save()
-              └─► StorageManager._doSave(json)
-                    ├─► localStorage.setItem(STORAGE_KEY, json)   ← always (safety net)
+        └─► Storage.save()                ← bumps settings.revision first
+              └─► StorageManager._doSave(json, opts)
+                    ├─► DataFile.write(json)
+                    │     ├─ File System Access API  → silent write to the file
+                    │     └─ download (Firefox/Safari) → only when opts.force,
+                    │        i.e. explicit save or tab close
+                    ├─► localStorage.setItem(STORAGE_KEY, json)   ← always
                     ├─► <script id="labwip-embedded-data"> updated in DOM
-                    └─► FileSystemStorageProvider.save(json)       ← if folder connected
-                          ├─► tasks.json → tasks.backup.json       ← backup first
-                          └─► tasks.json ← new content
+                    ├─► IDB backups.put({rev, at, tasks, json})   ← restore point
+                    └─► _noteFileWrite() when the file was written
 ```
 
-Settings mutations (holiday add/remove, theme change, list edits) call `Storage.save()` directly for an immediate write.
+Settings mutations (holiday add/remove, theme change, list edits) call `Storage.save()` directly for an immediate write. `Storage.saveNow()` passes `force: true`, which is what writes the data file on browsers without a file-write API.
 
 ### Async startup
 
 ```
 DOMContentLoaded (async)
   └─► StorageManager.init()       ← runs BEFORE App.init()
-        ├─► FileSystemStorageProvider.init()   ← restore IDB handle + request permission
-        │     └─► load tasks.json → AppState
-        ├─► (or) show #setup-overlay           ← first launch in Chrome/Edge
-        └─► (or) _loadFromLocalStorage()       ← Firefox or no folder connected
-              └─► AppState.fromJSON(winner)
-  └─► App.init()
+        ├─► DataFile.init()               ← restore the remembered handle
+        ├─► DataFile.read()               ← file, or sibling XHR where possible
+        ├─► _readCache()                  ← browser copy (STORAGE_KEY)
+        ├─► _readLegacy()                 ← pre-3.0 key, migrated once
+        ├─► reconcile by revision:
+        │     ├─ browser copy newer than file → _showRecovery(user chooses)
+        │     ├─ file newer                   → adopt file
+        │     └─ nothing anywhere             → _firstRunPrompt(user chooses)
+        └─► App.init()                    ← never seeds data on its own
 ```
 
-### Portable export
+### Portable snapshot
 
 ```
 Storage.exportHTML()
   ├─► AppState.settings.saveVersion++
-  └─► downloads WIPflow_vMAJOR.MINOR.SAVE.html (self-contained with embedded data)
+  ├─► escape &, <, > as \u escapes in the embedded JSON
+  ├─► verify: re-parse and compare the task count
+  ├─► clone the document, rewrite the data tag with the verified payload
+  └─► downloads WIPflow_vMAJOR.MINOR.SAVE.html
 ```
 
 ### View rendering
@@ -153,7 +162,9 @@ GlobalFilter.setDate(date) / GlobalFilter.clearDate()
 - **No classes** — all modules are plain object literals.
 - **Canvas rendering** — Dashboard charts and Gantt draw directly to `<canvas>`; no virtual DOM.
 - **Inline HTML** — views assign template-literal strings to `el.innerHTML`. Always escape user content with `escHtml()`.
-- **`markDirty()` vs `save()`** — use `markDirty()` at mutation sites; `save()` only for immediate writes.
+- **`markDirty()` vs `save()`** — use `markDirty()` at mutation sites; `save()` only for immediate writes, and `saveNow()` when the data file must be written on browsers that only write via download.
+- **Never fabricate data** — `App.init()` must not seed demo tasks. If nothing was loaded, the first-run overlay asks the user. This is what made earlier data loss invisible.
+- **Never resolve two copies by timestamp** — compare `settings.revision` and, when they differ, let the user choose via `StorageManager._showRecovery()`.
 - **`GlobalFilter.selectedDate`** is runtime-only — never write to `AppState.settings` and never persist.
 - **`AppState.settings.statuses`** — `{name, activityCategory}[]` since v2.4. Always use `.name` when you need the display string. `VALID_ACTIVITY_CATEGORIES` is the authoritative validation list. `migrateStatusCategory()` handles legacy string entries automatically in `fromJSON`.
 - **Holiday changes** — call `App.refresh()` after `Storage.save()` so all end dates recalculate.
@@ -194,6 +205,6 @@ Format: `MAJOR.MINOR.SAVE`
 
 - **MAJOR** — bump for breaking changes or significant new features.
 - **MINOR** — bump for bug fixes and small improvements.
-- **SAVE** — auto-incremented each time the user clicks **↓ Save as HTML**.
+- **SAVE** — auto-incremented each time the user creates a **↓ Portable snapshot**.
 
 `APP_BASE_VERSION` is a constant near the top of the `<script>` section. `saveVersion` lives in `AppState.settings` and persists with the data.

@@ -24,12 +24,18 @@ export async function waitForApp(page) {
   await page.waitForSelector('#sidebar-logo', { timeout: 15000 });
 }
 
-/** Dismiss the first-time setup overlay if it appears (Chrome/Edge only) */
-export async function dismissSetup(page) {
+/**
+ * Dismiss the first-run overlay if it appears.
+ *
+ * Since v3.0 the app never seeds data on its own, so a first run shows a choice
+ * overlay: start an empty project, load the demonstration tasks, connect a data
+ * file, or import. Tests that need data should load the demo set.
+ */
+export async function dismissSetup(page, { loadDemo = true } = {}) {
   const overlay = page.locator('#setup-overlay');
   if (await overlay.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await page.locator('#setup-use-browser').click();
-    await page.waitForTimeout(300);
+    await page.locator(loadDemo ? '#setup-load-demo' : '#setup-new').click();
+    await page.waitForTimeout(400);
   }
 }
 
